@@ -1,24 +1,41 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'controller/controller.dart';
 import 'controller/objectBox.dart';
 import 'screens/main_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-late ObjectBox objectBox;
-Future<void> main() async {
+
+Future<void> main(List<String> args) async {
+  //print(args);
   WidgetsFlutterBinding.ensureInitialized();
-  Map<Permission, PermissionStatus> statuses = await [
+
+  await [
     Permission.mediaLibrary,
     Permission.audio,
     Permission.storage,
   ].request();
-  objectBox = await ObjectBox.create();
-  Controller controller = Controller(objectBox);
+
+  await ObjectBox.initialize();
 
 
+
+  final docsDir = await getApplicationDocumentsDirectory();
+  File logFile = File('${docsDir.path}/.musicplayer database/log.txt');
+  // File argsFile = File('${docsDir.path}/.musicplayerdatabase/args.txt');
+  // if (args.isNotEmpty) {
+  //   argsFile.writeAsStringSync(args.join(' '));
+  // }
+  Controller controller = Controller(args);
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.dumpErrorToConsole(details, forceReport: true);
+    logFile.writeAsStringSync('${DateTime.now()}: ${details.toString()}\n', mode: FileMode.append);
+  };
 
   runApp(
       MaterialApp(
@@ -29,7 +46,7 @@ Future<void> main() async {
         ),
         debugShowCheckedModeBanner: false,
         //showPerformanceOverlay: true,
-        home: MyApp(controller: controller),
+        home: MyApp(controller: controller,),
       )
   );
 }

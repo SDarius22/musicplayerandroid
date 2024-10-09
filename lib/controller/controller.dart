@@ -2,66 +2,62 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:audiotags/audiotags.dart';
-import '../domain/album_type.dart';
-import '../domain/artist_type.dart';
-import '../domain/metadata_type.dart';
+import 'package:deezer/deezer.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../domain/playlist_type.dart';
 import '../domain/settings_type.dart';
 import '../utils/objectbox.g.dart';
 import '../utils/dominant_color/dominant_color.dart';
-import '../utils/flac_metadata/flacstream.dart';
-import '../utils/id3tag/id3tag.dart';
-import '../utils/lyric_reader/lyrics_reader.dart';
-import '../utils/lyric_reader/lyrics_reader_model.dart';
 import 'objectBox.dart';
 
 
+
 class Controller{
-  late Box<Settings> settingsBox;
-  late Box<MetadataType> songBox;
-  late Box<PlaylistType> playlistBox;
-  late Box<AlbumType> albumBox;
-  late Box<ArtistType> artistBox;
-  Settings settings = Settings();
   AudioPlayer audioPlayer = AudioPlayer();
+
+  bool firstTimeRetrieving = true;
+
   final navigatorKey = GlobalKey<NavigatorState>();
 
-  ValueNotifier<String> userMessageNotifier = ValueNotifier<String>('');
-  ValueNotifier<int> userMessageProgressNotifier = ValueNotifier<int>(3500);
-  ValueNotifier<String> timerNotifier = ValueNotifier<String>('Off');
-  ValueNotifier<int> sleepTimerNotifier = ValueNotifier<int>(0);
-  ValueNotifier<double> volumeNotifier = ValueNotifier<double>(0.5);
-  ValueNotifier<double> speedNotifier = ValueNotifier<double>(1);
-  ValueNotifier<double> balanceNotifier = ValueNotifier<double>(0);
-  ValueNotifier<int> indexNotifier = ValueNotifier<int>(0);
-  ValueNotifier<int> sliderNotifier = ValueNotifier<int>(0);
-  ValueNotifier<bool> loadingNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<bool> minimizedNotifier = ValueNotifier<bool>(true);
-  ValueNotifier<bool> hiddenNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<bool> listNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<bool> listChangeNotifier = ValueNotifier<bool>(false);
+  late Box<PlaylistType> playlistBox;
+  late Box<Settings> settingsBox;
+  late Deezer instance;
+
+  List<String> controllerQueue = []; // this is the queue, this can be shuffled
+  OnAudioQuery audioQuery = OnAudioQuery();
+  Settings settings = Settings();
+
+  ValueNotifier<bool> downloadNotifier = ValueNotifier<bool>(false);
+  ValueNotifier<bool> finishedRetrievingNotifier = ValueNotifier<bool>(false);
+
   ValueNotifier<bool> playingNotifier = ValueNotifier<bool>(false);
   ValueNotifier<bool> repeatNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<bool> shuffleNotifier = ValueNotifier<bool>(false);
   ValueNotifier<bool> searchNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<bool> retrievingChangedNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<bool> finishedRetrievingNotifier = ValueNotifier<bool>(false);
-  ValueNotifier<LyricsReaderModel> lyricModelNotifier = ValueNotifier<LyricsReaderModel>(LyricsReaderModel());
-  ValueNotifier<String> plainLyricNotifier = ValueNotifier<String>('');
-  ValueNotifier<List<MetadataType>> found = ValueNotifier<List<MetadataType>>([]);
-  ValueNotifier<List<MetadataType>> found2 = ValueNotifier<List<MetadataType>>([]);
-  ValueNotifier<Color> colorNotifier = ValueNotifier<Color>(Colors.deepPurpleAccent.shade400); // Light color, for lyrics and sliders
-  ValueNotifier<Color> colorNotifier2 = ValueNotifier<Color>(Colors.blueAccent.shade400); // Dark color, for background of player and window bar
-  ValueNotifier<Uint8List> imageNotifier = ValueNotifier<Uint8List>(Uint8List(0));
-  Controller(ObjectBox objectBox) {
-    imageInit();
-    settingsBox = objectBox.store.box<Settings>();
+  ValueNotifier<bool> shuffleNotifier = ValueNotifier<bool>(false);
+
+  ValueNotifier<Color> colorNotifier = ValueNotifier<Color>(Colors.white); // Light color, for lyrics and sliders
+  ValueNotifier<Color> colorNotifier2 = ValueNotifier<Color>(Colors.black); // Dark color, for background of player and window bar
+
+  ValueNotifier<double> balanceNotifier = ValueNotifier<double>(0);
+  ValueNotifier<double> speedNotifier = ValueNotifier<double>(1);
+  ValueNotifier<double> volumeNotifier = ValueNotifier<double>(0.5);
+
+  ValueNotifier<int> indexNotifier = ValueNotifier<int>(0); // index of the song in the queue that can be shuffled
+  ValueNotifier<int> sleepTimerNotifier = ValueNotifier<int>(0);
+  ValueNotifier<int> sliderNotifier = ValueNotifier<int>(0);
+
+  ValueNotifier<String> notification = ValueNotifier<String>('');
+  ValueNotifier<String> timerNotifier = ValueNotifier<String>('Off');
+
+
+  /// Constructor for the Controller class
+  Controller(List<String> args) {
+    settingsBox = ObjectBox.store.box<Settings>();
     if (settingsBox.isEmpty()) {
       print("Initialising settings");
       settingsBox.put(settings);
@@ -72,16 +68,13 @@ class Controller{
       //   print(setting.playingSongsUnShuffled.first.title);
       // }
     }
-    if(settings.showSystemTray){
-      initSystemTray();
+    if(settings.deezerARL.isNotEmpty){
+      initDeezer();
     }
 
-    songBox = objectBox.store.box<MetadataType>();
-    albumBox = objectBox.store.box<AlbumType>();
-    artistBox = objectBox.store.box<ArtistType>();
-    playlistBox = objectBox.store.box<PlaylistType>();
+    playlistBox = ObjectBox.store.box<PlaylistType>();
     audioPlayer.onPositionChanged.listen((Duration event){
-        sliderNotifier.value = event.inMilliseconds;
+      sliderNotifier.value = event.inMilliseconds;
     });
 
     audioPlayer.onPlayerStateChanged.listen((PlayerState state) {
@@ -98,12 +91,72 @@ class Controller{
         }
       }
     });
+
+    controllerQueue.addAll(settings.queue);
+
+    if (args.isNotEmpty) {
+      print(args);
+      List<String> songs = args.where((element) => element.endsWith(".mp3") || element.endsWith(".flac") || element.endsWith(".wav") || element.endsWith(".m4a")).toList();
+      updatePlaying(songs, 0);
+      indexChange(controllerQueue[0]);
+      playSong();
+    }
+    else{
+      if(controllerQueue.isNotEmpty){
+        indexChange(controllerQueue[settings.index]);
+        //playSong();
+      }
+    }
+
   }
 
-  Future<void> imageInit() async {
-    final ByteData bytes = await rootBundle.load('assets/bg.png');
-    final Uint8List list = bytes.buffer.asUint8List();
-    imageNotifier.value = list;
+  Future<void> addToPlaylist(PlaylistType playlist, List<SongModel> songs) async {
+    if(playlist.nextAdded == 'last'){
+      for(var song in songs){
+        if (playlist.songs.contains(song.data)){
+          continue;
+        }
+        playlist.songs.add(song.data);
+      }
+      playlistBox.put(playlist);
+    }
+    else{
+      for(int i = songs.length - 1; i >= 0; i--){
+        if (playlist.songs.contains(songs[i].data)){
+          continue;
+        }
+        playlist.songs.insert(0, songs[i].data);
+      }
+      playlistBox.put(playlist);
+    }
+    exportPlaylist(playlist);
+
+  }
+
+  Future<void> addToQueue(List<String> songs) async {
+    print("Adding to queue ${songs.length} songs.");
+    //loadingNotifier.value = true;
+    if (settings.queueAdd == 'last') {
+      //print("last");
+      controllerQueue.addAll(songs);
+      settings.queue.addAll(songs);
+      //print(settings.queue);
+      settingsBox.put(settings);
+    }
+    else if (settings.queueAdd == 'next') {
+      //print("next");
+      controllerQueue.insertAll(indexNotifier.value + 1, songs);
+      settings.queue.insertAll(indexNotifier.value + 1, songs);
+      settingsBox.put(settings);
+    }
+    else if (settings.queueAdd == 'first') {
+      //print("first");
+      controllerQueue.insertAll(0, songs);
+      settings.queue.insertAll(0, songs);
+      settingsBox.put(settings);
+    }
+    shuffleSongs();
+    //loadingNotifier.value = false;
   }
 
   Future<void> createPlaylist(PlaylistType playlist) async {
@@ -111,465 +164,295 @@ class Controller{
     exportPlaylist(playlist);
   }
 
-  Future<void> exportPlaylist(PlaylistType playlist) async {
-    var file = File("${settings.directory}/${playlist.name}.m3u");
-    file.writeAsStringSync("#EXTM3U\n");
-    for (var song in playlist.paths){
-      file.writeAsStringSync('$song\n', mode: FileMode.append);
-    }
-  }
-
-  Future<void> addToPlaylist(PlaylistType playlist, List<MetadataType> songs) async {
-    if(playlist.nextAdded == 'last'){
-      for(var song in songs){
-        if (playlist.paths.contains(song.path)){
-          continue;
-        }
-        playlist.paths.add(song.path);
-      }
-      playlistBox.put(playlist);
-    }
-    else{
-      for(int i = songs.length - 1; i >= 0; i--){
-        if (playlist.paths.contains(songs[i].path)){
-          continue;
-        }
-        playlist.paths.insert(0, songs[i].path);
-      }
-      playlistBox.put(playlist);
-    }
-    exportPlaylist(playlist);
-
-  }
-
   Future<void> deletePlaylist(PlaylistType playlist) async {
     playlistBox.remove(playlist.id);
     try {
       var file = File("${settings.directory}/${playlist.name}.m3u");
       file.delete();
+      showNotification("Playlist ${playlist.name} deleted.", 3500);
+    }
+    catch(e){
+      print(e);
+      showNotification("Playlist ${playlist.name} deleted.", 3500);
+    }
+  }
+
+  Future<void> exportPlaylist(PlaylistType playlist) async {
+    var file = File("${settings.directory}/${playlist.name}.m3u");
+    file.writeAsStringSync("#EXTM3U\n");
+    for (var song in playlist.songs){
+      file.writeAsStringSync('$song\n', mode: FileMode.append);
+    }
+  }
+
+  Future<List<AlbumModel>> getAlbums(String query) async {
+    List<AlbumModel> albums = await audioQuery.queryAlbums();
+    List<AlbumModel> searchResults = [];
+    for (var album in albums){
+      if(album.album.toLowerCase().contains(query.toLowerCase())){
+        searchResults.add(album);
+      }
+    }
+    return searchResults;
+  }
+
+  Future<List<ArtistModel>> getArtists(String query) async {
+    List<ArtistModel> artists = await audioQuery.queryArtists();
+    List<ArtistModel> searchResults = [];
+    for (var artist in artists){
+      if(artist.artist.toLowerCase().contains(query.toLowerCase())){
+        searchResults.add(artist);
+      }
+    }
+    return searchResults;
+  }
+
+  Future<Duration> getDuration(SongModel song) async {
+    try{
+      if(song.duration != null && song.duration != 0){
+        return Duration(milliseconds: song.duration!);
+      }
+      else{
+        Duration songDuration = await audioPlayer.getDuration() ?? Duration.zero;
+        return songDuration;
+      }
+    }
+    catch(e){
+      print(e);
+      return await audioPlayer.getDuration() ?? Duration.zero;
+    }
+  }
+
+  Future<Uint8List> getImage(int id) async{
+    ByteData data = await rootBundle.load('assets/bg.png');
+    Uint8List image =  data.buffer.asUint8List();
+    image = await audioQuery.queryArtwork(id, ArtworkType.AUDIO, format: ArtworkFormat.JPEG, size: 512,) ?? image;
+
+    return image;
+  }
+
+  Future<List<String>> getLyrics(String path) async{
+    var lyricsPath = path.replaceRange(path.lastIndexOf("."), path.length, ".lrc");
+    if(!File(lyricsPath).existsSync()){
+      try {
+        return await searchLyrics();
+      }
+      catch(e){
+        print(e);
+        return ["No lyrics found", "No lyrics found"];
+      }
+    }
+    else{
+      return [File(lyricsPath).readAsStringSync(), File(lyricsPath).readAsStringSync()];
+    }
+  }
+
+  Future<List<PlaylistType>> getPlaylists(String searchValue) async {
+    return playlistBox.query(PlaylistType_.name.contains(searchValue, caseSensitive: false)).order(PlaylistType_.name).build().find();
+  }
+
+  Future<List<SongModel>> getQueue() async {
+    List<SongModel> queue = [];
+    var songs = await audioQuery.querySongs(
+      sortType: SongSortType.TITLE,
+    );
+
+    for (String path in controllerQueue){
+        queue.add(songs.firstWhere((element) => element.data == path));
+    }
+    return queue;
+  }
+
+  Future<SongModel> getSong(String path) async {
+    var songs = await audioQuery.querySongs();
+    for (var song in songs){
+      if (song.data == path){
+        return song;
+      }
+    }
+    throw Exception("Song not found");
+  }
+
+  Future<List<SongModel>> getSongs(String searchValue) async {
+
+    if (settings.queue.isEmpty){
+      print("empty");
+      var songs = await audioQuery.querySongs();
+      List<String> initialQueue = songs.map((e) => e.data).toList();
+      print(initialQueue.length);
+      controllerQueue.addAll(initialQueue);
+      settings.queue.addAll(initialQueue);
+    }
+    if(controllerQueue.isEmpty){
+      controllerQueue.addAll(settings.queue);
+      settings.index = 0;
+      indexNotifier.value = 0;
+      indexChange(controllerQueue[0]);
+    }
+
+    if(settings.firstTime){
+      settings.firstTime = false;
+    }
+    settingsBox.put(settings);
+    if(firstTimeRetrieving){
+      firstTimeRetrieving = false;
+      finishedRetrievingNotifier.value = true;
+    }
+    if(searchValue.isNotEmpty){
+      return await searchLocal(searchValue);
+    }
+    else{
+      return await audioQuery.querySongs();
+    }
+  }
+
+  Future<void> indexChange(String song) async{
+    sliderNotifier.value = 0;
+    playingNotifier.value = false;
+    indexNotifier.value = controllerQueue.indexOf(song);
+    settings.index = settings.queue.indexOf(song);
+    settingsBox.put(settings);
+  }
+
+  Future<dynamic> initDeezer() async {
+    try{
+      instance = await Deezer.create(arl: settings.deezerARL);
     }
     catch(e){
       print(e);
     }
   }
 
-  void setTimer(String time) {
-    timerNotifier.value = time;
-    switch(time){
-      case '1 minute':
-        print("1 minute");
-        sleepTimerNotifier.value = 1 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 1 minute", 3500);
-        break;
-      case '15 minutes':
-        sleepTimerNotifier.value = 15 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 15 minutes", 3500);
-        break;
-      case '30 minutes':
-        sleepTimerNotifier.value = 30 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 30 minutes", 3500);
-        break;
-      case '45 minutes':
-        sleepTimerNotifier.value = 45 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 45 minutes", 3500);
-        break;
-      case '1 hour':
-        sleepTimerNotifier.value = 1 * 60 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 1 hour", 3500);
-        break;
-      case '2 hours':
-        sleepTimerNotifier.value = 2 * 60 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 2 hours", 3500);
-        break;
-      case '3 hours':
-        sleepTimerNotifier.value = 3 * 60 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 3 hours", 3500);
-        break;
-      case '4 hours':
-        sleepTimerNotifier.value = 4 * 60 * 60 * 1000;
-        startTimer();
-        showNotification("Sleep timer set to 4 hours", 3500);
-        break;
-      default:
-        sleepTimerNotifier.value = 0;
-        showNotification("Sleep timer has been turned off", 3500);
-        break;
+  Future<void> nextSong() async {
+    int newIndex;
+    if (indexNotifier.value == controllerQueue.length - 1) {
+      newIndex = 0;
+    } else {
+      newIndex = indexNotifier.value + 1;
+    }
+    indexChange(controllerQueue[newIndex]);
+    playSong();
+  }
+
+  Future<void> playSong() async {
+
+    if (playingNotifier.value){
+      print("pause");
+      await audioPlayer.pause();
+      playingNotifier.value = false;
+    }
+    else{
+      print("resume");
+      var song = await getSong(controllerQueue[indexNotifier.value]);
+      await audioPlayer.play(DeviceFileSource(song.data), position: Duration(milliseconds: sliderNotifier.value));
+      playingNotifier.value = true;
     }
   }
 
-  void startTimer(){
-    Timer.periodic(const Duration(milliseconds: 10), (timer) {
-      if(sleepTimerNotifier.value > 0){
-        sleepTimerNotifier.value -= 10;
+  Future<void> previousSong() async {
+    if(sliderNotifier.value > 5000){
+      audioPlayer.seek(const Duration(milliseconds: 0));
+    }
+    else {
+      int newIndex;
+      if (indexNotifier.value == 0) {
+        newIndex = controllerQueue.length - 1;
+      } else {
+        newIndex = indexNotifier.value - 1;
       }
-      else{
-        timer.cancel();
-        audioPlayer.pause();
-        playingNotifier.value = false;
-        timerNotifier.value = 'Off';
-        showNotification("Sleep timer has ended", 3500);
-      }
-    });
-  }
-
-  void showNotification(String message, int duration) {
-    if(settings.showAppNotifications == false){
-      return;
+      indexChange(controllerQueue[newIndex]);
+      playSong();
     }
-    userMessageNotifier.value = message;
-    Timer.periodic(
-      const Duration(milliseconds: 10),
-          (timer) {
-        if(userMessageProgressNotifier.value > 0){
-          userMessageProgressNotifier.value -= 10;
-        }
-        else{
-          timer.cancel();
-          userMessageNotifier.value = "";
-          userMessageProgressNotifier.value = duration;
-        }
-      },
-    );
-  }
-
-
-  Future<void> addToQueue(List<String> songs) async {
-    loadingNotifier.value = true;
-    if (settings.queueAdd == 'last') {
-      settings.playingSongs.addAll(songs);
-      settings.playingSongsUnShuffled.addAll(songs);
-      if (shuffleNotifier.value) {
-        settings.playingSongs.shuffle();
-      }
-      settingsBox.put(settings);
-    }
-    else if (settings.queueAdd == 'next') {
-      settings.playingSongs.insertAll(indexNotifier.value + 1, songs);
-      settings.playingSongsUnShuffled.insertAll(indexNotifier.value + 1, songs);
-      settingsBox.put(settings);
-    }
-    else if (settings.queueAdd == 'first') {
-      settings.playingSongs.insertAll(0, songs);
-      settings.playingSongsUnShuffled.insertAll(0, songs);
-      settingsBox.put(settings);
-    }
-    loadingNotifier.value = false;
   }
 
   Future<void> removeFromQueue(String song) async {
-    if(settings.playingSongs.length == 1){
+    if(controllerQueue.length == 1){
       showNotification("The queue cannot be empty.", 3500);
       print("The queue cannot be empty");
       return;
     }
 
-    int index = settings.playingSongs.indexOf(song);
-    if (index == indexNotifier.value){
-      if (index == settings.playingSongs.length - 1){
-        indexNotifier.value = 0;
-      }
-      else{
-        indexNotifier.value = index + 1;
-      }
-      indexChange(settings.playingSongs[indexNotifier.value]);
-      await playSong();
-      indexNotifier.value -= 1;
+    String current = controllerQueue[indexNotifier.value];
+    controllerQueue.remove(song);
+    settings.queue.remove(song);
+    if(!settings.queue.contains(current)){
+      indexChange(controllerQueue[0]);
+      playSong();
     }
     else{
-      if (index < indexNotifier.value){
-        indexNotifier.value -= 1;
-      }
+      indexNotifier.value = controllerQueue.indexOf(current);
+      settings.index = settings.queue.indexOf(current);
     }
-    settings.playingSongs.removeAt(index);
-    settings.playingSongsUnShuffled.removeAt(index);
     settingsBox.put(settings);
-    listChangeNotifier.value = !listChangeNotifier.value;
   }
 
-
-  Future<void> updatePlaying(List<String> songs, int index) async {
-    loadingNotifier.value = true;
-    if(settings.queuePlay == 'all'){
-      settings.playingSongs.clear();
-      settings.playingSongsUnShuffled.clear();
-      settings.playingSongs.addAll(songs);
-      settings.playingSongsUnShuffled.addAll(songs);
-      if (shuffleNotifier.value){
-        settings.playingSongs.shuffle();
-      }
-      settingsBox.put(settings);
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
     }
-    else{
-      addToQueue([songs[index]]);
+    String song = settings.queue.removeAt(oldIndex);
+    settings.queue.insert(newIndex, song);
+    if (oldIndex == indexNotifier.value) {
+      settings.index = newIndex;
+    } else if (oldIndex < indexNotifier.value && newIndex >= indexNotifier.value) {
+      settings.index -= 1;
+    } else if (oldIndex > indexNotifier.value && newIndex <= indexNotifier.value) {
+      settings.index += 1;
     }
-    loadingNotifier.value = false;
+    settingsBox.put(settings);
   }
 
-  Future<void> retrieveSongs() async {
-    List<MetadataType> songs = songBox.getAll();
-    List<String> paths = [];
-    for (int i = 0; i < songs.length; i++){
-      //print(songs[i].path);
-      paths.add(songs[i].path);
-    }
-
-    List<FileSystemEntity> allEntities = [];
-    final dir = Directory(settings.directory);
-    allEntities = await dir.list(recursive: true).toList();
-
-    for(int i = 0; i < allEntities.length; i++){
-      //print(allEntities[i].path);
-      if(allEntities[i] is File){
-        String path = allEntities[i].path.replaceAll("\\", "/");
-        if (path.endsWith(".flac") || path.endsWith(".mp3") || path.endsWith(".wav") || path.endsWith(".m4a")) {
-          if(paths.contains(path)){
-            //print("already exists");
-          }
-          else{
-            paths.add(allEntities[i].path);
-            var song = await retrieveSong(allEntities[i].path, allEntities);
-            songBox.put(song);
-            if (i % 25 == 0){
-              retrievingChangedNotifier.value = !retrievingChangedNotifier.value;
-            }
-          }
-        }
-      }
-      else if(allEntities[i] is Directory){
-        allEntities.addAll(Directory(allEntities[i].path).listSync(recursive: true).toList());
-      }
-    }
-    await makeAlbumsArtists();
-
-    if (settings.playingSongs.isEmpty){
-      //print("empty");
-      updatePlaying(songBox.query().order(MetadataType_.title).build().find().map((e) => e.path).toList(), 0);
-    }
-    else{
-      //print("not empty");
-      if (shuffleNotifier.value) {
-        settings.playingSongs.shuffle();
-      }
-    }
-    retrievingChangedNotifier.value = !retrievingChangedNotifier.value;
-
-    //print(settings.playingSongsUnShuffled[settings.lastPlayingIndex].title);
-    indexChange(settings.playingSongs[settings.lastPlayingIndex]);
-    finishedRetrievingNotifier.value = true;
+  void reset(){
+    finishedRetrievingNotifier.value = false;
+    playlistBox.removeAll();
+    controllerQueue.clear();
+    firstTimeRetrieving = true;
   }
 
-  Future<MetadataType> retrieveSong(String path, List<FileSystemEntity> allEntities) async {
-    MetadataType metadataVariable = MetadataType();
-    metadataVariable.path = path;
-    var metadataVar = await AudioTags.read(path);
-    if(metadataVar == null || metadataVar.pictures.isEmpty == true){
-      //print(path);
-      if(path.endsWith(".flac")) {
-        var flac = FlacInfo(File(path));
-        var metadatas = await flac.readMetadatas();
-        String metadata = metadatas[2].toString();
-        metadata = metadata.substring(1, metadata.length - 1);
-        List<String> metadata2 = metadata.split(', *1234a678::876a4321*,');
+  Future<dynamic> searchDeezer(String searchValue) async {
+    if(searchValue.isEmpty){
+      return [];
+    }
+    final Map<String, String> cookies = {'arl': settings.deezerARL};
+    String searchUrl = 'https://api.deezer.com/search?q=$searchValue&limit=56&index=0&output=json';
+    print(searchUrl);
 
-        //print(metadata2);
-        for (var metadate2 in metadata2) {
-          if (metadate2.contains("TITLE=")) {
-            metadataVariable.title = metadate2.substring(6);
-          }
-          if (metadate2.contains("ARTIST=") &&
-              !metadate2.contains("ALBUMARTIST=")) {
-            metadataVariable.artists = metadate2.substring(8);
-          }
-          if(metadate2.contains("ALBUMARTIST=")){
-            metadataVariable.albumArtist = metadate2.substring(12);
-          }
-          if (metadate2.contains("trackNumber=")) {
-            metadataVariable.trackNumber = int.parse(metadate2.substring(13));
-          }
-          if(metadate2.contains("discNumber=")){
-            metadataVariable.discNumber = int.parse(metadate2.substring(12));
-          }
-          if (metadate2.contains("ALBUM=")) {
-            metadataVariable.album = metadate2.substring(7);
-          }
-          if (metadate2.contains("LENGTH=")) {
-            metadataVariable.duration = int.parse(metadate2.substring(8));
-          }
-        }
-      }
-      else if(path.endsWith(".mp3")){
-        //print(path);
-        var parser = ID3TagReader.path(path);
-        var tags = parser.readTagSync();
-        metadataVariable.title = tags.title ?? path.replaceAll("\\", "/").split("/").last;
-        metadataVariable.artists = tags.artist ?? "Unknown Artist";
-        metadataVariable.album = tags.album ?? 'Unknown Album';
-        metadataVariable.discNumber = int.parse(tags.trackNumber ?? "0");
-        metadataVariable.trackNumber = int.parse(tags.track ?? "0");
-        metadataVariable.duration = tags.duration?.inMilliseconds ?? 0;
-      }
-    }
-    else {
-      metadataVariable.title = metadataVar.title ?? path.replaceAll("\\", "/").split("/").last;
-      metadataVariable.album = metadataVar.album ?? "Unknown Album";
-      metadataVariable.duration = metadataVar.duration ?? 0;
-      metadataVariable.trackNumber = metadataVar.trackNumber ?? 0;
-      metadataVariable.artists = metadataVar.trackArtist ?? "Unknown Artist";
-      metadataVariable.albumArtist = metadataVar.albumArtist ?? "Unknown Album Artist";
-      metadataVariable.discNumber = metadataVar.discNumber ?? 0;
-    }
-    var lyrPath = path.replaceRange(path.lastIndexOf("."), path.length, ".lrc");
-    //print(lyrPath);
-    bool exists = allEntities.any((element) => element.path == lyrPath);
-    //print(exists);
-    if (!exists) {
-      bool lyricsFound = false;
-      if(path.endsWith(".flac")) {
-        var flac = FlacInfo(File(path));
-        var metadatas = await flac.readMetadatas();
-        String metadata = metadatas[2].toString();
-        metadata = metadata.substring(1, metadata.length - 1);
-        List<String> metadata2 = metadata.split(', *1234a678::876a4321*,');
-        for (var metadate2 in metadata2) {
-          if (metadate2.contains("LYRICS=")) {
-            File lyrFile = File(path.replaceAll(".flac", ".lrc"));
-            lyrFile.writeAsStringSync(metadate2.substring(7));
-            metadataVariable.lyricsPath = lyrFile.path;
-            lyricsFound = true;
-          }
-        }
-      }
-      else if(path.endsWith(".mp3")){
-        //print(path);
-        var parser = ID3TagReader.path(path);
-        var tags = parser.readTagSync();
-        if (tags.lyrics.isEmpty == false) {
-          File lyrFile = File(path.replaceAll(".mp3", ".lrc"));
-          lyrFile.writeAsStringSync(tags.lyrics.first.toString());
-          metadataVariable.lyricsPath = lyrFile.path;
-          lyricsFound = true;
-        }
-      }
-      if(!lyricsFound){
-        metadataVariable.lyricsPath = "No Lyrics";
-      }
-    }
-    else{
-      metadataVariable.lyricsPath = lyrPath;
-    }
-    if(metadataVariable.duration == 0){
-      //print("duration is 0");
-      var metadataVar2 = await AudioTags.read(path);
-      if (metadataVar2?.duration != null) {
-        metadataVariable.duration = metadataVar2!.duration!;
-      }
+    final http.Response getResponse = await http.get(Uri.parse(searchUrl), headers: {
+      'Cookie': 'arl=${cookies['arl']}',
+    });
 
-
-    }
-
-    return metadataVariable;
+    final Map<String, dynamic> getResponseJson = jsonDecode(getResponse.body);
+    return(getResponseJson['data']);
   }
 
-  Future<Uint8List> imageRetrieve(String path, bool update) async{
-    final ByteData bytes = await rootBundle.load('assets/bg.png');
-    Uint8List image = bytes.buffer.asUint8List();
-    // imageNotifier.value = list;
-    // Uint8List image = File("assets/bg.png").readAsBytesSync();
-    var metadataVar = await AudioTags.read(path);
-    if(metadataVar?.pictures.isEmpty == true){
-      if(path.endsWith(".flac")) {
-        var flac = FlacInfo(File(path));
-        var metadatas = await flac.readMetadatas();
-        List<String> imageBytes = metadatas[3].toString().substring(
-            1, metadatas[3]
-            .toString()
-            .length - 1).split(", ");
-        image = Uint8List.fromList(
-            imageBytes.map(int.parse).toList());
+  Future<List<SongModel>> searchLocal(String enteredKeyword) async {
+    var songs = await audioQuery.querySongs();
+    List<SongModel> searchResults = [];
+    //int count = 0;
+    for (var song in songs){
+      var artist = song.artist ?? "Unknown artist";
+      var album = song.album ?? "Unknown album";
+      if(song.title.toLowerCase().contains(enteredKeyword.toLowerCase()) || artist.toLowerCase().contains(enteredKeyword.toLowerCase()) || album.toLowerCase().contains(enteredKeyword.toLowerCase())){
+        searchResults.add(song);
+        //count++;
       }
-      else if(path.endsWith(".mp3")) {
-        //print(path);
-        var parser = ID3TagReader.path(path);
-        var tags = parser.readTagSync();
-        List<String> imageBytes = tags.pictures.isEmpty ? [] : tags.pictures[0].toString().substring(21, tags.pictures.first.toString().length - 3).split(", ");
-        image = imageBytes.isEmpty? File("./assets//bg.png").readAsBytesSync() : Uint8List.fromList(imageBytes.map(int.parse).toList());
-      }
+      // if(count == 25){
+      //   break;
+      // }
     }
-    else{
-      image = metadataVar?.pictures[0].bytes ?? File("assets/bg.png").readAsBytesSync();
-    }
-    if (update){
-      print("image changed");
-      imageNotifier.value = image;
-    }
-    return image;
+    return searchResults;
   }
 
-  Future<void> makeAlbumsArtists() async {
-    List<MetadataType> songs = songBox.getAll();
-    for(MetadataType song in songs) {
-      Query<AlbumType> albumQuery = albumBox.query(AlbumType_.name.equals(song.album)).build();
-      List<AlbumType> albums = albumQuery.find();
-      if (albums.isEmpty){
-        AlbumType album = AlbumType();
-        album.name = song.album;
-        album.songs.add(song);
-        List<String> songArtists = song.artists.split("; ");
-        for (String artist in songArtists){
-          Query<ArtistType> artistQuery = artistBox.query(ArtistType_.name.equals(artist)).build();
-          List<ArtistType> artists = artistQuery.find();
-          if (artists.isEmpty){
-            ArtistType artistType = ArtistType();
-            artistType.name = artist;
-            artistType.songs.add(song);
-            artistBox.put(artistType);
-          }
-          else{
-            artists.first.songs.add(song);
-            artistBox.put(artists.first);
-          }
-        }
-        albumBox.put(album);
-      }
-      else{
-        albums.first.songs.add(song);
-        albumBox.put(albums.first);
-        List<String> songArtists = song.artists.split("; ");
-        for (String artist in songArtists){
-          Query<ArtistType> artistQuery = artistBox.query(ArtistType_.name.equals(artist)).build();
-          List<ArtistType> artists = artistQuery.find();
-          if (artists.isEmpty){
-            ArtistType artistType = ArtistType();
-            artistType.name = artist;
-            artistType.songs.add(song);
-            artistBox.put(artistType);
-          }
-          else{
-            artists.first.songs.add(song);
-            artistBox.put(artists.first);
-          }
-        }
-      }
-    }
-  }
-
-  Future<void> searchLyrics() async {
-    plainLyricNotifier.value = 'Searching for lyrics...';
-    final Map<String, String> cookies = {'arl': settings.deezerToken};
+  Future<List<String>> searchLyrics() async {
+    //plainLyricNotifier.value = 'Searching for lyrics...';
+    final Map<String, String> cookies = {'arl': settings.deezerARL};
     final Map<String, String> params = {'jo': 'p', 'rto': 'c', 'i': 'c'};
     const String loginUrl = 'https://auth.deezer.com/login/arl';
     const String deezerApiUrl = 'https://pipe.deezer.com/api';
-    MetadataType song = songBox.query(MetadataType_.path.equals(settings.playingSongs[indexNotifier.value])).build().find().first;
+    SongModel song = await getSong(controllerQueue[indexNotifier.value]);
     String title = song.title;
-    String artist = song.artists;
-    String path = song.path;
+    String artist = song.artist ?? "";
+    String path = song.data;
     String searchUrl = 'https://api.deezer.com/search?q=$title-$artist&limit=1&index=0&output=json';
     print(searchUrl);
 
@@ -685,69 +568,145 @@ class Controller{
     }
     //print(plainLyric);
 
-    lyricModelNotifier.value = LyricsModelBuilder.create().bindLyricToMain(syncedLyric).getModel();
-    plainLyricNotifier.value = plainLyric;
+    // lyricModelNotifier.value = LyricsModelBuilder.create().bindLyricToMain(syncedLyric).getModel();
+    // plainLyricNotifier.value = plainLyric;
 
     if(syncedLyric != 'No lyrics found'){
-      var lyrPath = path.replaceAll(".mp3", ".lrc")
-          .replaceAll(
-          ".flac", ".lrc").replaceAll(".wav", ".lrc")
-          .replaceAll(
-          ".m4a", ".lrc");
+      var lyrPath = path.replaceRange(path.lastIndexOf("."), path.length, ".lrc");
       File lyrFile = File(lyrPath);
       lyrFile.writeAsStringSync(syncedLyric);
-      song.lyricsPath = lyrFile.path;
     }
     else if (plainLyric != 'No lyrics found'){
-      var lyrPath = path.replaceAll(".mp3", ".lrc")
-          .replaceAll(
-          ".flac", ".lrc").replaceAll(".wav", ".lrc")
-          .replaceAll(
-          ".m4a", ".lrc");
+      var lyrPath = path.replaceRange(path.lastIndexOf("."), path.length, ".lrc");
       File lyrFile = File(lyrPath);
       lyrFile.writeAsStringSync(plainLyric);
-      song.lyricsPath = lyrFile.path;
     }
-    songBox.put(song);
+    return [plainLyric, syncedLyric];
   }
 
-  void lyricModelReset() {
-    //print(settings.playingSongs[indexNotifier.value].lyricsPath);
-    var song = songBox.query(MetadataType_.path.equals(settings.playingSongs[indexNotifier.value])).build().find().first;
-    if (song.lyricsPath.contains(".lrc")) {
-      File lyrFile = File(song.lyricsPath);
-      lyricModelNotifier.value = LyricsModelBuilder.create().bindLyricToMain(lyrFile.readAsStringSync()).getModel();
-      if (lyricModelNotifier.value.lyrics.isEmpty) {
-        lyricModelNotifier.value = LyricsModelBuilder.create().bindLyricToMain("No lyrics").getModel();
-        plainLyricNotifier.value = lyrFile.readAsStringSync();
-      }
-    }
-    else {
-      lyricModelNotifier.value = LyricsModelBuilder.create().bindLyricToMain("No lyrics").getModel();
-      plainLyricNotifier.value = "No lyrics";
-    }
+  void setRepeat() {
+    repeatNotifier.value = !repeatNotifier.value;
+    print("repeat: ${repeatNotifier.value}");
   }
 
-  Future<void> indexChange(String song) async{
-    sliderNotifier.value = 0;
-    playingNotifier.value = false;
-    indexNotifier.value = settings.playingSongs.indexOf(song);
-    settings.lastPlayingIndex = indexNotifier.value;
+  void setShuffle() {
+    int currentIndex = indexNotifier.value;
+    shuffleNotifier.value = !shuffleNotifier.value;
+    print("shuffle: ${shuffleNotifier.value}");
+    if (shuffleNotifier.value){
+      shuffleSongs();
+    }
+    else{
+      indexNotifier.value = settings.queue.indexOf(controllerQueue[currentIndex]);
+      controllerQueue.clear();
+      controllerQueue.addAll(settings.queue);
+    }
     settingsBox.put(settings);
+  }
 
-    await imageRetrieve(song, true);
-    DominantColors extractor = DominantColors(bytes: imageNotifier.value, dominantColorsCount: 2);
+  void setTimer(String time) {
+    timerNotifier.value = time;
+    switch(time){
+      case '1 minute':
+        print("1 minute");
+        sleepTimerNotifier.value = 1 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 1 minute", 3500);
+        break;
+      case '15 minutes':
+        sleepTimerNotifier.value = 15 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 15 minutes", 3500);
+        break;
+      case '30 minutes':
+        sleepTimerNotifier.value = 30 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 30 minutes", 3500);
+        break;
+      case '45 minutes':
+        sleepTimerNotifier.value = 45 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 45 minutes", 3500);
+        break;
+      case '1 hour':
+        sleepTimerNotifier.value = 1 * 60 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 1 hour", 3500);
+        break;
+      case '2 hours':
+        sleepTimerNotifier.value = 2 * 60 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 2 hours", 3500);
+        break;
+      case '3 hours':
+        sleepTimerNotifier.value = 3 * 60 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 3 hours", 3500);
+        break;
+      case '4 hours':
+        sleepTimerNotifier.value = 4 * 60 * 60 * 1000;
+        startTimer();
+        showNotification("Sleep timer set to 4 hours", 3500);
+        break;
+      default:
+        sleepTimerNotifier.value = 0;
+        showNotification("Sleep timer has been turned off", 3500);
+        break;
+    }
+  }
+
+  void showNotification(String message, int duration, {Widget actions = const SizedBox()}) {
+    if(settings.appNotifications == false){
+      return;
+    }
+    notification.value = message;
+    actions = actions;
+    Timer.periodic(
+      Duration(milliseconds: duration),
+          (timer) {
+        notification.value = '';
+        actions = const SizedBox();
+        timer.cancel();
+      },
+    );
+  }
+
+  void shuffleSongs(){
+    if(shuffleNotifier.value){
+      String current = controllerQueue[indexNotifier.value];
+      controllerQueue.shuffle();
+      indexNotifier.value = controllerQueue.indexOf(current);
+    }
+  }
+
+  void startTimer(){
+    Timer.periodic(const Duration(milliseconds: 10), (timer) {
+      if(sleepTimerNotifier.value > 0){
+        sleepTimerNotifier.value -= 10;
+      }
+      else{
+        timer.cancel();
+        audioPlayer.pause();
+        playingNotifier.value = false;
+        timerNotifier.value = 'Off';
+        showNotification("Sleep timer has ended", 3500);
+      }
+    });
+  }
+
+  Future<void> updateColors(Uint8List image) async {
+    DominantColors extractor = DominantColors(bytes: image, dominantColorsCount: 2);
     var colors = extractor.extractDominantColors();
-    if(colors.first.computeLuminance() > 0.179 && colors.last.computeLuminance() > 0.179){
+    if(colors.first.computeLuminance() > 0.15 && colors.last.computeLuminance() > 0.15){
       colorNotifier.value = colors.first;
       colorNotifier2.value = Colors.black;
     }
-    else if (colors.first.computeLuminance() < 0.179 && colors.last.computeLuminance() < 0.179){
+    else if (colors.first.computeLuminance() < 0.15 && colors.last.computeLuminance() < 0.15){
       colorNotifier.value = Colors.blue;
       colorNotifier2.value = colors.first;
     }
     else{
-      if(colors.first.computeLuminance() > 0.179){
+      if(colors.first.computeLuminance() > 0.15){
         colorNotifier.value = colors.first;
         colorNotifier2.value = colors.last;
       }
@@ -756,92 +715,25 @@ class Controller{
         colorNotifier2.value = colors.first;
       }
     }
-    lyricModelReset();
   }
 
-  Future<void> playSong() async {
-    if (playingNotifier.value){
-      print("pause");
-      await audioPlayer.pause();
-      playingNotifier.value = false;
+  Future<void> updatePlaying(List<String> songs, int index) async {
+    //loadingNotifier.value = true;
+    //print(settings.queuePlay);
+    if(settings.queuePlay == 'all'){
+      settings.queue.clear();
+      settings.queue.addAll(songs);
+      settings.index = index;
+      settingsBox.put(settings);
+      controllerQueue.clear();
+      controllerQueue.addAll(songs);
+      indexNotifier.value = index;
+      shuffleSongs();
+
     }
     else{
-      print("resume");
-      await audioPlayer.play(DeviceFileSource(settings.playingSongs[indexNotifier.value]), position: Duration(milliseconds: sliderNotifier.value));
-      playingNotifier.value = true;
+      addToQueue([songs[index]]);
     }
-    if (settings.showSystemTray) {
-      initSystemTray();
-    }
-  }
-
-  Future<void> previousSong() async {
-    if(sliderNotifier.value > 5000){
-      audioPlayer.seek(const Duration(milliseconds: 0));
-    }
-    else {
-      int newIndex;
-      if (indexNotifier.value == 0) {
-        newIndex = settings.playingSongs.length - 1;
-      } else {
-        newIndex = indexNotifier.value - 1;
-      }
-      indexChange(settings.playingSongs[newIndex]);
-      playSong();
-    }
-  }
-
-  Future<void> nextSong() async {
-    int newIndex;
-    if (indexNotifier.value == settings.playingSongs.length - 1) {
-      newIndex = 0;
-    } else {
-      newIndex = indexNotifier.value + 1;
-    }
-    indexChange(settings.playingSongs[newIndex]);
-    playSong();
-  }
-
-  Future<void> filter(String enteredKeyword, bool search) async {
-    List<MetadataType> results = [];
-    var query = songBox.query(MetadataType_.title.contains(enteredKeyword, caseSensitive: false) | MetadataType_.artists.contains(enteredKeyword, caseSensitive: false) | MetadataType_.album.contains(enteredKeyword, caseSensitive: false)).build();
-    results = query.find();
-    if(search) {
-      found.value = List.from(results);
-    }
-    else{
-      //print("found2");
-      found2.value = List.from(results);
-    }
-  }
-
-  void setRepeat() {
-    repeatNotifier.value = !repeatNotifier.value;
-    if (settings.showSystemTray) {
-      initSystemTray();
-    }
-    print("repeat: ${repeatNotifier.value}");
-  }
-
-  void setShuffle() {
-    int currentIndex = indexNotifier.value;
-    shuffleNotifier.value = !shuffleNotifier.value;
-    if (settings.showSystemTray) {
-      initSystemTray();
-    }
-    print("shuffle: ${shuffleNotifier.value}");
-    if (shuffleNotifier.value){
-      settings.playingSongs.shuffle();
-      indexNotifier.value = settings.playingSongs.indexOf(settings.playingSongsUnShuffled[currentIndex]);
-    }
-    else{
-      indexNotifier.value = settings.playingSongsUnShuffled.indexOf(settings.playingSongs[currentIndex]);
-      settings.playingSongs.clear();
-      settings.playingSongs.addAll(settings.playingSongsUnShuffled);
-    }
-    settingsBox.put(settings);
-  }
-
-  Future<void> initSystemTray() async {
+    //loadingNotifier.value = false;
   }
 }

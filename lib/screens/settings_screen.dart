@@ -5,7 +5,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:musicplayerandroid/screens/create_screen.dart';
 import 'package:musicplayerandroid/screens/export_screen.dart';
 import 'package:musicplayerandroid/screens/main_screen.dart';
-import 'package:musicplayerandroid/screens/notification_widget.dart';
 import '../controller/controller.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -22,9 +21,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    //var boldSize = height * 0.025;
-    var normalSize = height * 0.02;
-    var smallSize = height * 0.015;
+    //var boldSize = height * 0.015;
+    var normalSize = height * 0.0125;
+    var smallSize = height * 0.01;
     return Scaffold(
       body: Container(
         width: width,
@@ -135,13 +134,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             setState(() {
                               widget.controller.settings.directory = directory;
                             });
-                            widget.controller.settings.playingSongsUnShuffled.clear();
-                            widget.controller.settings.playingSongs.clear();
-                            widget.controller.settings.lastPlayingIndex = 0;
+                            widget.controller.settings.queue.clear();
+                            widget.controller.controllerQueue.clear();
+                            widget.controller.settings.index = 0;
                             widget.controller.settingsBox.put(widget.controller.settings);
-                            widget.controller.songBox.removeAll();
-                            widget.controller.albumBox.removeAll();
-                            widget.controller.artistBox.removeAll();
                             widget.controller.finishedRetrievingNotifier.value = false;
                             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyApp(controller: widget.controller,)));
 
@@ -601,54 +597,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
 
-                  ///System Tray
-                  Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "System Tray",
-                            style: TextStyle(
-                              fontSize: normalSize,
-                              fontWeight: FontWeight.normal,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(
-                            height: height * 0.005,
-                          ),
-                          Text("Show the app in the system tray", style: TextStyle(
-                            fontSize: smallSize,
-                            fontWeight: FontWeight.normal,
-                            color: Colors.grey.shade50,
-                          ),),
-                        ],
-                      ),
-                      const Spacer(),
-                      Switch(
-                        value: widget.controller.settings.showSystemTray,
-                        onChanged: (value){
-                          setState(() {
-                            widget.controller.settings.showSystemTray = value;
-                          });
-                          widget.controller.settingsBox.put(widget.controller.settings);
-                          widget.controller.initSystemTray();
-                        },
-                        trackColor: WidgetStateProperty.all(widget.controller.colorNotifier2.value),
-                        thumbColor: WidgetStateProperty.all(Colors.white),
-                        thumbIcon: WidgetStateProperty.all(widget.controller.settings.showSystemTray ? const Icon(Icons.check, color: Colors.black,) : const Icon(Icons.close, color: Colors.black,)),
-                        activeColor: Colors.white,
-                      ),
-
-
-                    ],
-                  ),
-                  SizedBox(
-                    height: height * 0.02,
-                  ),
-
                   ///In-App Notifications
                   Row(
                     children: [
@@ -676,16 +624,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const Spacer(),
                       Switch(
-                        value: widget.controller.settings.showAppNotifications,
+                        value: widget.controller.settings.appNotifications,
                         onChanged: (value){
                           setState(() {
-                            widget.controller.settings.showAppNotifications = value;
+                            widget.controller.settings.appNotifications = value;
                           });
                           widget.controller.settingsBox.put(widget.controller.settings);
                         },
                         trackColor: WidgetStateProperty.all(widget.controller.colorNotifier2.value),
                         thumbColor: WidgetStateProperty.all(Colors.white),
-                        thumbIcon: WidgetStateProperty.all(widget.controller.settings.showSystemTray ? const Icon(Icons.check, color: Colors.black,) : const Icon(Icons.close, color: Colors.black,)),
+                        thumbIcon: WidgetStateProperty.all(widget.controller.settings.appNotifications ? const Icon(Icons.check, color: Colors.black,) : const Icon(Icons.close, color: Colors.black,)),
                         activeColor: Colors.white,
                       ),
 
@@ -725,9 +673,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SizedBox(
                         width: width * 0.3,
                         child: TextField(
-                          controller: TextEditingController(text: widget.controller.settings.deezerToken),
+                          controller: TextEditingController(text: widget.controller.settings.deezerARL),
                           onChanged: (value){
-                            widget.controller.settings.deezerToken = value;
+                            widget.controller.settings.deezerARL = value;
                             widget.controller.settingsBox.put(widget.controller.settings);
                           },
                           style: TextStyle(

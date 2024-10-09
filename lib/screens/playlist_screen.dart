@@ -2,8 +2,8 @@ import 'package:collection/collection.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/utils/hover_widget/hover_container.dart';
-import '../domain/metadata_type.dart';
 import 'package:musicplayerandroid/domain/playlist_type.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../controller/controller.dart';
 import '../utils/objectbox.g.dart';
 import 'add_screen.dart';
@@ -22,36 +22,36 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   ValueNotifier<bool> editMode = ValueNotifier<bool>(false);
   String featuredArtists = "";
   String duration = "0 seconds";
-  ValueNotifier<List<MetadataType>> songs = ValueNotifier<List<MetadataType>>([]);
+  ValueNotifier<List<SongModel>> songs = ValueNotifier<List<SongModel>>([]);
 
 
   @override
   void initState() {
-    for (int i = 0; i < widget.playlist.paths.length; i++){
-      MetadataType song = widget.controller.songBox.query(MetadataType_.path.equals(widget.playlist.paths[i])).build().find().first;
-       songs.value.add(song);
-    }
-    int totalDuration = 0;
-    for (int i = 0; i <  songs.value.length; i++){
-      totalDuration +=  songs.value[i].duration;
-    }
-    duration = " ${totalDuration ~/ 3600} hours, ${(totalDuration % 3600 ~/ 60)} minutes and ${(totalDuration % 60)} seconds";
-    duration = duration.replaceAll(" 0 hours,", "");
-    duration = duration.replaceAll(" 0 minutes and", "");
-    var artistMap = <String, int>{};
-    for (int i = 0; i <  songs.value.length; i++){
-      artistMap.containsKey( songs.value[i].artists) ? artistMap[ songs.value[i].artists] = artistMap[ songs.value[i].artists]! + 1 : artistMap[ songs.value[i].artists] = 1;
-    }
-    var sortedMap = artistMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    for (int i = 0; i < 3 && i < sortedMap.length; i++){
-      featuredArtists += sortedMap[i].key;
-      if(i != 2 && i != sortedMap.length - 1){
-        featuredArtists += ", ";
-      }
-    }
-    if(sortedMap.length > 3){
-      featuredArtists += " and ${sortedMap.length - 3} more";
-    }
+    // for (int i = 0; i < widget.playlist.songs.length; i++){
+    //   SongModel song = widget.controller.songBox.query(SongModel_.path.equals(widget.playlist.songs[i])).build().find().first;
+    //   songs.value.add(song);
+    // }
+    // int totalDuration = 0;
+    // for (int i = 0; i <  songs.value.length; i++){
+    //   totalDuration +=  songs.value[i].duration;
+    // }
+    // duration = " ${totalDuration ~/ 3600} hours, ${(totalDuration % 3600 ~/ 60)} minutes and ${(totalDuration % 60)} seconds";
+    // duration = duration.replaceAll(" 0 hours,", "");
+    // duration = duration.replaceAll(" 0 minutes and", "");
+    // var artistMap = <String, int>{};
+    // for (int i = 0; i <  songs.value.length; i++){
+    //   artistMap.containsKey( songs.value[i].artists) ? artistMap[ songs.value[i].artists] = artistMap[ songs.value[i].artists]! + 1 : artistMap[ songs.value[i].artists] = 1;
+    // }
+    // var sortedMap = artistMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    // for (int i = 0; i < 3 && i < sortedMap.length; i++){
+    //   featuredArtists += sortedMap[i].key;
+    //   if(i != 2 && i != sortedMap.length - 1){
+    //     featuredArtists += ", ";
+    //   }
+    // }
+    // if(sortedMap.length > 3){
+    //   featuredArtists += " and ${sortedMap.length - 3} more";
+    // }
     super.initState();
   }
 
@@ -60,9 +60,9 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    var boldSize = height * 0.025;
-    var normalSize = height * 0.02;
-    var smallSize = height * 0.015;
+    var boldSize = height * 0.015;
+    var normalSize = height * 0.0125;
+    var smallSize = height * 0.01;
     return Scaffold(
       body: Container(
         width: width,
@@ -117,7 +117,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                 borderRadius: BorderRadius.circular(width * 0.025),
                                 child: ImageWidget(
                                   controller: widget.controller,
-                                  path: widget.playlist.paths.first,
+                                  id: songs.value.first.id,
                                 ),
                               ),
 
@@ -216,10 +216,10 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                         children: [
                           IconButton(
                             onPressed: () async {
-                              if(widget.controller.settings.playingSongsUnShuffled.equals(widget.playlist.paths) == false){
-                                widget.controller.updatePlaying(widget.playlist.paths, 0);
+                              if(widget.controller.settings.queue.equals(widget.playlist.songs) == false){
+                                widget.controller.updatePlaying(widget.playlist.songs, 0);
                               }
-                              widget.controller.indexChange(widget.playlist.paths.first);
+                              widget.controller.indexChange(widget.playlist.songs.first);
                               await widget.controller.playSong();
 
                             },
@@ -285,7 +285,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                       itemCount:  songs.value.length,
                       itemBuilder: (context, int index) {
                         //print("Building ${widget.playlist. songs.value[widget.playlist.order[index]].title}");
-                        MetadataType song =  songs.value[index];
+                        SongModel song =  songs.value[index];
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 500),
                           curve: Curves.easeInOut,
@@ -298,10 +298,10 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                             child: GestureDetector(
                               behavior: HitTestBehavior.translucent,
                               onTap: () async {
-                                if(widget.controller.settings.playingSongs.equals(widget.playlist.paths) == false){
-                                  widget.controller.updatePlaying(widget.playlist.paths, index);
+                                if(widget.controller.settings.queue.equals(widget.playlist.songs) == false){
+                                  widget.controller.updatePlaying(widget.playlist.songs, index);
                                 }
-                                widget.controller.indexChange(widget.controller.settings.playingSongsUnShuffled[index]);
+                                widget.controller.indexChange(widget.controller.settings.queue[index]);
                                 await widget.controller.playSong();
                               },
                               child: ClipRRect(
@@ -322,7 +322,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                         borderRadius: BorderRadius.circular(width * 0.01),
                                         child: ImageWidget(
                                           controller: widget.controller,
-                                          path: song.path,
+                                          id: song.id,
                                         ),
                                       ),
                                       SizedBox(
@@ -343,7 +343,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                               height: height * 0.005,
                                             ),
                                             Text(
-                                                song.artists.toString().length > 60 ? "${song.artists.toString().substring(0, 60)}..." : song.artists.toString(),
+                                                song.artist.toString().length > 60 ? "${song.artist.toString().substring(0, 60)}..." : song.artist.toString(),
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                   fontSize: smallSize,
@@ -353,7 +353,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                       ),
                                       const Spacer(),
                                       Text(
-                                          "${song.duration ~/ 60}:${(song.duration % 60).toString().padLeft(2, '0')}",
+                                          song.duration == null || song.duration == 0 ? "??:??" : "${song.duration! ~/ 60}:${(song.duration! % 60).toString().padLeft(2, '0')}",
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: normalSize,
@@ -378,7 +378,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                             ),
                             itemBuilder: (context, int index) {
                               //print("Building ${widget.playlist. songs.value[widget.playlist.order[index]].title}");
-                              MetadataType song =  songs.value[index];
+                              SongModel song =  songs.value[index];
                               return AnimatedContainer(
                                 key: Key('$index'),
                                 duration: const Duration(milliseconds: 500),
@@ -401,12 +401,12 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                           borderRadius: BorderRadius.circular(width * 0.01),
                                           child: ImageWidget(
                                             controller: widget.controller,
-                                            path: song.path,
+                                            id: song.id,
                                             buttons: IconButton(
                                               onPressed: (){
                                                 songs.value.removeAt(index);
                                                 songs.value = List.from(songs.value);
-                                                widget.playlist.paths.removeAt(index);
+                                                widget.playlist.songs.removeAt(index);
                                               },
                                               icon: Icon(
                                                 FluentIcons.delete_12_filled,
@@ -434,7 +434,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                             SizedBox(
                                               height: height * 0.001,
                                             ),
-                                            Text(song.artists.toString().length > 60 ? "${song.artists.toString().substring(0, 60)}..." : song.artists.toString(),
+                                            Text(song.artist.toString().length > 60 ? "${song.artist.toString().substring(0, 60)}..." : song.artist.toString(),
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                   fontSize: smallSize,
@@ -444,7 +444,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                       ),
                                       const Spacer(),
                                       Text(
-                                          "${song.duration ~/ 60}:${(song.duration % 60).toString().padLeft(2, '0')}",
+                                          song.duration == null || song.duration == 0 ? "??:??" : "${song.duration! ~/ 60}:${(song.duration! % 60).toString().padLeft(2, '0')}",
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: normalSize,
@@ -455,13 +455,13 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                 ),
                               );
                             },
-                            itemCount: widget.playlist.paths.length,
+                            itemCount: widget.playlist.songs.length,
                             onReorder: (int oldIndex, int newIndex) {
                               if (oldIndex < newIndex) {
                                 newIndex -= 1;
                               }
-                              var temp = widget.playlist.paths.removeAt(oldIndex);
-                              widget.playlist.paths.insert(newIndex, temp);
+                              var temp = widget.playlist.songs.removeAt(oldIndex);
+                              widget.playlist.songs.insert(newIndex, temp);
                               var temp2 =  songs.value.removeAt(oldIndex);
                               songs.value.insert(newIndex, temp2);
                               //widget.controller.playlistBox.put(widget.playlist);

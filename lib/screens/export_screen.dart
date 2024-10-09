@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -22,9 +21,9 @@ class _ExportScreenState extends State<ExportScreen> {
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    //var boldSize = height * 0.025;
-    var normalSize = height * 0.02;
-    var smallSize = height * 0.015;
+    //var boldSize = height * 0.015;
+    var normalSize = height * 0.0125;
+    var smallSize = height * 0.01;
     var query = widget.controller.playlistBox.query().order(PlaylistType_.name).build();
     return Scaffold(
       body: Container(
@@ -71,7 +70,7 @@ class _ExportScreenState extends State<ExportScreen> {
                         if(i == 0){
                           PlaylistType queuePlaylist = PlaylistType();
                           queuePlaylist.name = "Current Queue";
-                          queuePlaylist.paths = widget.controller.settings.playingSongsUnShuffled;
+                          queuePlaylist.songs = widget.controller.settings.queue;
                           widget.controller.exportPlaylist(queuePlaylist);
                         }
                         else{
@@ -133,7 +132,7 @@ class _ExportScreenState extends State<ExportScreen> {
                                             color: Colors.black,
                                             image: DecorationImage(
                                               fit: BoxFit.cover,
-                                              image: Image.memory(File("assets/current_queue.png").readAsBytesSync()).image,
+                                              image: Image.asset("assets/current_queue.png").image,
                                             )
                                         ),
                                       ),
@@ -147,12 +146,12 @@ class _ExportScreenState extends State<ExportScreen> {
                                         ),
                                       ),
                                     ),
-                                  )
-                                else
-                                  ImageWidget(
-                                    controller: widget.controller,
-                                    path: playlist.paths.first,
                                   ),
+                                // else
+                                //   ImageWidget(
+                                //     controller: widget.controller,
+                                //     path: playlist.songs.first,
+                                //   ),
                                 if(selected.contains(index))
                                   BackdropFilter(
                                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),

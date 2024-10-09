@@ -1,11 +1,10 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/utils/objectbox.g.dart';
-
+import 'package:musicplayerandroid/screens/settings_screen.dart';
 import '../controller/controller.dart';
 import 'albums.dart';
 import 'artists.dart';
+import 'download.dart';
 import 'tracks.dart';
 import 'playlists.dart';
 
@@ -20,18 +19,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>{
   bool volume = true;
 
-  int currentPage = 3;
+  int currentPage = 4;
   String userMessage = "No message";
-  final PageController _pageController = PageController(initialPage: 4);
+  final PageController _pageController = PageController(initialPage: 5);
 
 
 
   @override
   void initState(){
-    widget.controller.retrieveSongs();
-    widget.controller.found.value = widget.controller.songBox.query().order(MetadataType_.title).build().find();
-    widget.controller.found2.value = widget.controller.songBox.query().order(MetadataType_.title).build().find();
     super.initState();
+    widget.controller.initDeezer();
   }
 
   @override
@@ -41,39 +38,54 @@ class _HomePageState extends State<HomePage>{
     var boldSize = height * 0.015;
     var normalSize = height * 0.0125;
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Music Player",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: boldSize,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.settings,
+              color: Colors.white,
+            ),
+            onPressed: (){
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen(controller: widget.controller)),
+              );
+            },
+          ),
+        ],
+      ),
       body: SizedBox(
         width: width,
         height: height,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            // artists, albums, playlists, tracks
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Expanded(
-                    child: SizedBox(
+                    child: Container(
                         height: height * 0.05,
-                        child: ElevatedButton(
-                            onPressed: (){
+                        color: currentPage != 0 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                            onTap: (){
                               //print("Artists");
                               _pageController.animateToPage(0,
                                   duration: const Duration(milliseconds: 500),
                                   curve: Curves.easeIn
                               );
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: currentPage != 0 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0),
-                              ),
-                            ),
                             child: Text(
                               "Artists",
-                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                height: 1,
-                                overflow: TextOverflow.fade,
                                 color: Colors.white,
                                 fontSize: currentPage != 0 ? normalSize : boldSize,
                               ),
@@ -82,22 +94,18 @@ class _HomePageState extends State<HomePage>{
                     )
                 ),
                 Expanded(
-                    child: SizedBox(
+                    child: Container(
                         height: height * 0.05,
-                        child: ElevatedButton(
-                            onPressed: (){
+                        color: currentPage != 1 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                            onTap: (){
                               //print("Artists");
                               _pageController.animateToPage(1,
                                   duration: const Duration(milliseconds: 500),
                                   curve: Curves.easeIn
                               );
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: currentPage != 1 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0),
-                              ),
-                            ),
                             child: Text(
                               "Albums",
                               style: TextStyle(
@@ -109,24 +117,20 @@ class _HomePageState extends State<HomePage>{
                     )
                 ),
                 Expanded(
-                    child: SizedBox(
+                    child: Container(
                         height: height * 0.05,
-                        child: ElevatedButton(
-                            onPressed: (){
+                        color: currentPage != 2 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                            onTap: (){
                               //print("Artists");
                               _pageController.animateToPage(2,
                                   duration: const Duration(milliseconds: 500),
                                   curve: Curves.easeIn
                               );
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: currentPage != 2 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0),
-                              ),
-                            ),
                             child: Text(
-                              "Playlists",
+                              "Download",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: currentPage != 2 ? normalSize : boldSize,
@@ -136,24 +140,20 @@ class _HomePageState extends State<HomePage>{
                     )
                 ),
                 Expanded(
-                    child: SizedBox(
+                    child: Container(
                         height: height * 0.05,
-                        child: ElevatedButton(
-                            onPressed: (){
+                        color: currentPage != 3 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                            onTap: (){
                               //print("Artists");
                               _pageController.animateToPage(3,
                                   duration: const Duration(milliseconds: 500),
                                   curve: Curves.easeIn
                               );
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: currentPage != 3 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0),
-                              ),
-                            ),
                             child: Text(
-                              "Tracks",
+                              "Playlists",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: currentPage != 3 ? normalSize : boldSize,
@@ -162,40 +162,55 @@ class _HomePageState extends State<HomePage>{
                         )
                     )
                 ),
+                Expanded(
+                    child: Container(
+                        height: height * 0.05,
+                        color: currentPage != 4 ? const Color(0xFF0E0E0E) : const Color(0xFF1b1b1b),
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                            onTap: (){
+                              //print("Artists");
+                              _pageController.animateToPage(4,
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeIn
+                              );
+                            },
+                            child: Text(
+                              "Tracks",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: currentPage != 4 ? normalSize : boldSize,
+                              ),
+                            )
+                        )
+                    )
+                ),
               ],
             ),
-            // current page
             Expanded(
-              child: Container(
-                padding: EdgeInsets.only(
-                    top: height * 0.02,
-                    left: width * 0.01,
-                    right: width * 0.01,
-                    bottom: height * 0.02
-                ),
-                child: PageView(
-                  onPageChanged: (int index){
-                    setState(() {
-                      currentPage = index;
-                    });
+              child: PageView(
+                onPageChanged: (int index){
+                  setState(() {
+                    currentPage = index;
+                  });
+                },
+                controller: _pageController,
+                scrollDirection: Axis.horizontal,
+                scrollBehavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
                   },
-                  controller: _pageController,
-                  scrollDirection: Axis.horizontal,
-                  scrollBehavior: ScrollConfiguration.of(context).copyWith(
-                    dragDevices: {
-                      PointerDeviceKind.touch,
-                      PointerDeviceKind.mouse,
-                    },
-                  ),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    Artists(controller: widget.controller),
-                    Albums(controller: widget.controller),
-                    Playlists(controller: widget.controller),
-                    Tracks(controller: widget.controller),
-                  ],
-
                 ),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  Artists(controller: widget.controller),
+                  Albums(controller: widget.controller),
+                  Download(controller: widget.controller),
+                  Playlists(controller: widget.controller),
+                  Tracks(controller: widget.controller),
+                ],
+
               ),
             ),
 

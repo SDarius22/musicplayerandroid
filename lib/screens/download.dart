@@ -1,42 +1,45 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:audiotags/audiotags.dart';
 import 'package:collection/collection.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:musicplayerandroid/screens/image_widget.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../controller/controller.dart';
-import 'add_screen.dart';
-import 'artist_screen.dart';
-import 'image_widget.dart';
 
-class Artists extends StatefulWidget{
+import '../controller/controller.dart';
+
+class Download extends StatefulWidget{
   final Controller controller;
-  const Artists({super.key, required this.controller});
+  const Download({super.key, required this.controller});
 
   @override
-  _ArtistsState createState() => _ArtistsState();
+  _DownloadState createState() => _DownloadState();
 }
 
 
-class _ArtistsState extends State<Artists>{
+class _DownloadState extends State<Download>{
 
   FocusNode searchNode = FocusNode();
 
   Timer? _debounce;
 
-  late Future<List<ArtistModel>> artistsFuture;
+  late Future downloadFuture;
 
   @override
   void initState(){
     super.initState();
-    artistsFuture = widget.controller.getArtists('');
+    downloadFuture = widget.controller.searchDeezer('');
   }
 
   _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
-        artistsFuture = widget.controller.getArtists(query);
+        downloadFuture = widget.controller.searchDeezer(query);
       });
     });
   }
@@ -89,7 +92,7 @@ class _ArtistsState extends State<Artists>{
               floatingLabelBehavior: FloatingLabelBehavior.never,
               labelStyle: TextStyle(
                 color: Colors.white,
-                fontSize: smallSize,
+                fontSize: normalSize,
               ),
               labelText: 'Search', suffixIcon: Icon(FluentIcons.search_16_filled, color: Colors.white, size: height * 0.02,),
             ),
@@ -97,9 +100,10 @@ class _ArtistsState extends State<Artists>{
         ),
         Expanded(
           child: FutureBuilder(
-              future: artistsFuture,
+              future: downloadFuture,
               builder: (context, snapshot){
                 if(snapshot.hasError){
+                  print(snapshot.error);
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -110,7 +114,7 @@ class _ArtistsState extends State<Artists>{
                           color: Colors.red,
                         ),
                         Text(
-                          "Error loading artists",
+                          "Error loading songs",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: smallSize,
@@ -135,9 +139,10 @@ class _ArtistsState extends State<Artists>{
                 else if(snapshot.hasData){
                   if (snapshot.data!.isEmpty){
                     return Center(
-                      child: Text("No artists found.", style: TextStyle(color: Colors.white, fontSize: smallSize),),
+                      child: Text("No songs found", style: TextStyle(color: Colors.white, fontSize: smallSize),),
                     );
                   }
+                  List<dynamic> songs = snapshot.data!;
                   return GridView.builder(
                     padding: EdgeInsets.only(
                       left: width * 0.01,
@@ -145,7 +150,7 @@ class _ArtistsState extends State<Artists>{
                       top: height * 0.01,
                       bottom: width * 0.125,
                     ),
-                    itemCount: snapshot.data!.length,
+                    itemCount: songs.length,
                     gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                       childAspectRatio: 0.825,
                       maxCrossAxisExtent: width * 0.425,
@@ -153,54 +158,77 @@ class _ArtistsState extends State<Artists>{
                       //mainAxisSpacing: width * 0.0125,
                     ),
                     itemBuilder: (BuildContext context, int index) {
-                      ArtistModel artist = snapshot.data![index];
+                      var song = songs[index];
+                      ValueNotifier<double> progress = ValueNotifier<double>(0.0);
                       return MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
-                          onTap: () {
-                            //print(artist.name);
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => ArtistScreen(controller: widget.controller, artist: artist)));
+                          onTap: () async {
+                            print("Downloading ${song['id']}");
+                            try {
+                              final stream = await widget.controller.instance
+                                  .getSong(song['id'].toString(),
+                                onProgress: (received, total) {
+                                  //print("received: $received, total: $total");
+                                  progress.value = received / total;
+                                },
+                              );
+                              File file = File("${widget.controller.settings
+                                  .directory}/${song['artist']['name']
+                                  .toString()} - ${song['title']
+                                  .toString()}.mp3");
+                              if (stream != null) {
+                                await file.writeAsBytes(stream.data);
+                                widget.controller.showNotification("Song downloaded successfully.", 3500);
+                              } else {
+                                widget.controller.showNotification("Something went wrong.", 3500);
+                              }
+                              http.Response response = await http.get(
+                                Uri.parse(song['album']['cover_big']),
+                              );
+
+                              await AudioTags.write(file.path,
+                                Tag(
+                                    title: song['title'].toString(),
+                                    trackArtist: song['artist']['name'],
+                                    album: song['album']['title'],
+                                    albumArtist: song['artist']['name'],
+                                    duration: song['duration'],
+                                    pictures: [
+                                      Picture(
+                                          bytes: Uint8List.fromList(
+                                              response.bodyBytes),
+                                          mimeType: null,
+                                          pictureType: PictureType.other
+                                      )
+                                    ]
+                                ),
+                              );
+                            }
+                            catch(e){
+                              print(e);
+                              if(widget.controller.settings.deezerARL.isEmpty){
+                                widget.controller.showNotification("Cannot download song without a working Deezer ARL. Please add one in settings.", 3500);
+                              }
+                              else{
+                                widget.controller.showNotification("Something went wrong. Try again later.", 3500);
+                              }
+                            }
                           },
                           child: Column(
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(width * 0.01),
-                                child: Hero(
-                                  tag: artist.artist,
-                                  child: FutureBuilder(
-                                    future: widget.controller.audioQuery.queryArtwork(artist.id, ArtworkType.ARTIST),
-                                    builder: (context, snapshot){
-                                      return AspectRatio(
-                                        aspectRatio: 1.0,
-                                        child: snapshot.hasData?
-                                        Container(
-                                          decoration: BoxDecoration(
-                                              color: Colors.black,
-                                              image: DecorationImage(
-                                                fit: BoxFit.cover,
-                                                image: Image.memory(snapshot.data!).image,
-                                              )
-                                          ),
-                                        ):
-                                        Container(
-                                          decoration: BoxDecoration(
-                                              color: Colors.black,
-                                              image: DecorationImage(
-                                                fit: BoxFit.cover,
-                                                image: Image.asset("assets/bg.png").image,
-                                              )
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                child: ImageWidget(
+                                  controller: widget.controller,
+                                  url: song['album']['cover_medium'],
                                 ),
                               ),
                               SizedBox(
-                                height: width * 0.005,
+                                height: height * 0.005,
                               ),
                               Text(
-                                artist.artist,
+                                song['title'].toString(),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
@@ -216,6 +244,7 @@ class _ArtistsState extends State<Artists>{
                         ),
 
                       );
+
                     },
                   );
                 }
@@ -231,7 +260,6 @@ class _ArtistsState extends State<Artists>{
         ),
       ],
     );
-
-
   }
+
 }

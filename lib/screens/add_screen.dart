@@ -1,17 +1,16 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/screens/image_widget.dart';
 import 'package:musicplayerandroid/utils/hover_widget/stack_hover_widget.dart';
 import 'package:musicplayerandroid/utils/objectbox.g.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../domain/playlist_type.dart';
-import 'package:musicplayerandroid/domain/metadata_type.dart';
 import '../controller/controller.dart';
 
 class AddScreen extends StatefulWidget {
   final Controller controller;
-  final List<MetadataType> songs;
+  final List<SongModel> songs;
   const AddScreen({super.key, required this.controller, required this.songs});
 
   @override
@@ -22,11 +21,12 @@ class _AddScreenState extends State<AddScreen> {
   List<int> selected = [];
   @override
   Widget build(BuildContext context) {
+    //print(widget.songs.length);
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    //var boldSize = height * 0.025;
-    var normalSize = height * 0.02;
-    var smallSize = height * 0.015;
+    //var boldSize = height * 0.015;
+    var normalSize = height * 0.0125;
+    var smallSize = height * 0.01;
     var query = widget.controller.playlistBox.query().order(PlaylistType_.name).build();
     return Scaffold(
       body: Container(
@@ -68,10 +68,12 @@ class _AddScreenState extends State<AddScreen> {
                 const Spacer(),
                 ElevatedButton(
                     onPressed: (){
-                      print("Add to new playlist");
-                      for(int i in selected){
+                      //print("Add to new playlist");
+                      for(int i = 0; i < selected.length; i++){
                         if(i == 0){
-                          widget.controller.addToQueue(widget.songs.map((e) => e.path).toList());
+                          List<String> paths = widget.songs.map((e) => e.data).toList();
+                          //print(paths);
+                          widget.controller.addToQueue(paths);
                         }
                         else{
                           var playlist = query.find()[i-1];
@@ -137,7 +139,7 @@ class _AddScreenState extends State<AddScreen> {
                                             color: Colors.black,
                                             image: DecorationImage(
                                               fit: BoxFit.cover,
-                                              image: Image.memory(File("assets/current_queue.png").readAsBytesSync()).image,
+                                              image: Image.asset("assets/current_queue.png").image,
                                             )
                                         ),
                                       ),
@@ -151,12 +153,12 @@ class _AddScreenState extends State<AddScreen> {
                                         ),
                                       ),
                                     ),
-                                  )
-                                else
-                                  ImageWidget(
-                                    controller: widget.controller,
-                                    path: playlist.paths.first,
                                   ),
+                                // else
+                                //   ImageWidget(
+                                //     controller: widget.controller,
+                                //     path: playlist.songs.first,
+                                //   ),
                                 if(selected.contains(index))
                                   BackdropFilter(
                                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
