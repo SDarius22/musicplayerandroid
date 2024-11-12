@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:deezer/deezer.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
+
 import '../domain/playlist_type.dart';
 import '../domain/settings_type.dart';
 import '../utils/objectbox.g.dart';
@@ -24,8 +26,11 @@ class Controller{
 
   final navigatorKey = GlobalKey<NavigatorState>();
 
-  late Box<PlaylistType> playlistBox;
-  late Box<Settings> settingsBox;
+  final secretKey = encrypt.Key.fromUtf8("eP9CLbcaUxKfvhhFLWcusXWo3ZS2nR1P");
+  final iv = encrypt.IV.fromUtf8("1234567890123456");
+
+  Box<PlaylistType> playlistBox = ObjectBox.store.box<PlaylistType>();
+  Box<Settings> settingsBox = ObjectBox.store.box<Settings>();
   late Deezer instance;
 
   List<String> controllerQueue = []; // this is the queue, this can be shuffled
@@ -56,18 +61,19 @@ class Controller{
 
 
   /// Constructor for the Controller class
-  Controller(List<String> args) {
-    settingsBox = ObjectBox.store.box<Settings>();
-    if (settingsBox.isEmpty()) {
-      print("Initialising settings");
-      settingsBox.put(settings);
-    }
-    else {
-      settings = settingsBox.getAll().last;
-      // for (Settings setting in settingsBox.getAll()){
-      //   print(setting.playingSongsUnShuffled.first.title);
-      // }
-    }
+  Controller() {
+    settings = settingsBox.getAll().last;
+    // settingsBox = ObjectBox.store.box<Settings>();
+    // if (settingsBox.isEmpty()) {
+    //   print("Initialising settings");
+    //   settingsBox.put(settings);
+    // }
+    // else {
+    //   settings = settingsBox.getAll().last;
+    //   // for (Settings setting in settingsBox.getAll()){
+    //   //   print(setting.playingSongsUnShuffled.first.title);
+    //   // }
+    // }
     if(settings.deezerARL.isNotEmpty){
       initDeezer();
     }
@@ -93,20 +99,23 @@ class Controller{
     });
 
     controllerQueue.addAll(settings.queue);
-
-    if (args.isNotEmpty) {
-      print(args);
-      List<String> songs = args.where((element) => element.endsWith(".mp3") || element.endsWith(".flac") || element.endsWith(".wav") || element.endsWith(".m4a")).toList();
-      updatePlaying(songs, 0);
-      indexChange(controllerQueue[0]);
-      playSong();
+    if (controllerQueue.isNotEmpty) {
+      indexChange(controllerQueue[settings.index]);
+      //playSong();
     }
-    else{
-      if(controllerQueue.isNotEmpty){
-        indexChange(controllerQueue[settings.index]);
-        //playSong();
-      }
-    }
+    // if (args.isNotEmpty) {
+    //   print(args);
+    //   List<String> songs = args.where((element) => element.endsWith(".mp3") || element.endsWith(".flac") || element.endsWith(".wav") || element.endsWith(".m4a")).toList();
+    //   updatePlaying(songs, 0);
+    //   indexChange(controllerQueue[0]);
+    //   playSong();
+    // }
+    // else{
+    //   if(controllerQueue.isNotEmpty){
+    //     indexChange(controllerQueue[settings.index]);
+    //     //playSong();
+    //   }
+    // }
 
   }
 
@@ -267,14 +276,18 @@ class Controller{
     var songs = await audioQuery.querySongs();
     for (var song in songs){
       if (song.data == path){
+        var songUniqueString = "${song.title}//${song.artist}//${song.album}//${song.duration}//${song.data.split('/').last}//${song.track}";
+        if(!settings.missingSongs.contains(songUniqueString)){
+          settings.missingSongs.add(songUniqueString);
+          settingsBox.put(settings);
+        }
         return song;
       }
     }
     throw Exception("Song not found");
   }
 
-  Future<List<SongModel>> getSongs(String searchValue) async {
-
+  Future<List<SongModel>> getSongs(String enteredKeyword) async {
     if (settings.queue.isEmpty){
       print("empty");
       var songs = await audioQuery.querySongs();
@@ -298,12 +311,22 @@ class Controller{
       firstTimeRetrieving = false;
       finishedRetrievingNotifier.value = true;
     }
-    if(searchValue.isNotEmpty){
-      return await searchLocal(searchValue);
+    var songs = await audioQuery.querySongs();
+    List<SongModel> searchResults = [];
+    //int count = 0;
+    for (var song in songs){
+      var artist = song.artist ?? "Unknown artist";
+      var album = song.album ?? "Unknown album";
+      if(enteredKeyword.isEmpty || song.title.toLowerCase().contains(enteredKeyword.toLowerCase()) || artist.toLowerCase().contains(enteredKeyword.toLowerCase()) || album.toLowerCase().contains(enteredKeyword.toLowerCase())){
+        searchResults.add(song);
+        var songUniqueString = "${song.title}//${song.artist}//${song.album}//${song.duration}//${song.data.split('/').last}//${song.track}";
+        if(!settings.missingSongs.contains(songUniqueString)){
+          settings.missingSongs.add(songUniqueString);
+          settingsBox.put(settings);
+        }
+      }
     }
-    else{
-      return await audioQuery.querySongs();
-    }
+    return searchResults;
   }
 
   Future<void> indexChange(String song) async{

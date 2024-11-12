@@ -3,7 +3,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/utils/hover_widget/hover_container.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../utils/lyric_reader/lyrics_reader_model.dart';
 import '../utils/multivaluelistenablebuilder/mvlb.dart';
 import '../controller/controller.dart';
 import '../utils/lyric_reader/lyrics_reader.dart';
@@ -24,7 +23,7 @@ class SongPlayerWidget extends StatefulWidget {
   _SongPlayerWidgetState createState() => _SongPlayerWidgetState();
 }
 
-class _SongPlayerWidgetState extends State<SongPlayerWidget> {
+class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProviderStateMixin {
   late ScrollController itemScrollController;
   late Future songFuture;
   late Future lyricFuture;
@@ -41,7 +40,17 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
       highlight : false
   );
   ValueNotifier<bool> minimizedNotifier = ValueNotifier<bool>(true);
-  ValueNotifier<int> pageToShow = ValueNotifier<int>(0);
+
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  final double minHeight = 0.085;
+  final double maxHeight = 1.0;
+  final double snapThreshold = 0.05;
+  double currentSize = 0.085;
+
+  int currentPage = 1;
+  final PageController _pageController = PageController(initialPage: 1);
+
 
 
   @override
@@ -51,6 +60,16 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       itemScrollController = ScrollController();
+    });
+    _controller = AnimationController(vsync: this, duration: Duration(milliseconds: 300));
+    _animation = Tween<double>(begin: minHeight, end: maxHeight).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+    _controller.addListener(() {
+      setState(() {
+        currentSize = _animation.value;
+      });
     });
     widget.controller.colorNotifier.addListener(() {
       setState(() {
@@ -148,21 +167,65 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                 if(snapshot.hasData){
                   SongModel currentSong = snapshot.data as SongModel;
                   return GestureDetector(
-                    onTap: (){
-                      minimizedNotifier.value = !minimizedNotifier.value;
-                      pageToShow.value = 0;
+                    onTap: () {
+                      if (minimizedVal) {
+                        _animation = Tween<double>(begin: currentSize, end: maxHeight).animate(CurvedAnimation(
+                          parent: _controller,
+                          curve: Curves.easeOut,
+                        ));
+                        minimizedNotifier.value = false;
+                        _controller.forward(from: 0);
+                      }
+                    },
+                    onVerticalDragUpdate: (details) {
+                      setState(() {
+                        currentSize -= details.primaryDelta! / MediaQuery.of(context).size.height;
+                        currentSize = currentSize.clamp(minHeight, maxHeight);
+                      });
+                    },
+                    onVerticalDragEnd: (details) {
+                      double dragDistance = (currentSize - minHeight).abs();
+                      double screenFractionDragged = dragDistance / (maxHeight - minHeight);
+
+                      // Determine snap direction based on drag velocity and distance
+                      if (screenFractionDragged >= snapThreshold && details.primaryVelocity! < 0) {
+                      // Snap up if the user dragged up, or if the drag velocity was upwards
+                        print("Snap up");
+                        _animation = Tween<double>(begin: currentSize, end: maxHeight).animate(CurvedAnimation(
+                          parent: _controller,
+                          curve: Curves.easeOut,
+                        ));
+                        minimizedNotifier.value = false;
+                      }
+                      // Snap down if the user dragged down, or if the drag velocity was downwards
+                      else if (screenFractionDragged >= snapThreshold && details.primaryVelocity! > 0) {
+                        print("Snap down");
+                        _animation = Tween<double>(begin: currentSize, end: minHeight).animate(CurvedAnimation(
+                          parent: _controller,
+                          curve: Curves.easeOut,
+                        ));
+                        minimizedNotifier.value = true;
+                      }
+                      else {
+                        print("Snap to closest point");
+                        // If the drag distance was below the threshold, snap to the closest point
+                        _animation = Tween<double>(begin: currentSize, end: currentSize > (minHeight + maxHeight) / 2 ? maxHeight : minHeight)
+                            .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+                      }
+
+                      _controller.forward(from: 0);
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 500),
                       curve: Curves.linear,
-                      height: minimizedVal ? height * 0.075 + 2: height,
+                      height: MediaQuery.of(context).size.height * currentSize,
                       width: width,
                       alignment: minimizedVal ? Alignment.centerLeft : Alignment.topCenter,
                       padding: EdgeInsets.only(
-                        left: minimizedVal ? 1 : width * 0.01,
-                        right: minimizedVal ? 1 : width * 0.01,
-                        top: minimizedVal ? 1 : height * 0.15,
-                        bottom: minimizedVal ? 1 : height * 0.01,
+                        left: minimizedVal ? 1 : width * 0.005,
+                        right: minimizedVal ? 1 : width * 0.005,
+                        top: minimizedVal ? 1 : height * 0.05,
+                        bottom: minimizedVal ? 1 : 0,
                       ),
                       margin: minimizedVal ? EdgeInsets.only(
                         left: width * 0.025,
@@ -176,349 +239,155 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                       ),
                       child: Wrap(
                         alignment: WrapAlignment.center,
-                        crossAxisAlignment: minimizedVal ? WrapCrossAlignment.start : WrapCrossAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.start,
                         children: [
                           if(!minimizedVal)
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        if (pageToShow.value == 0) {
-                                          pageToShow.value = 2;
-                                        } else {
-                                          pageToShow.value = 0;
-                                        }
-                                      });
-                                    },
-                                    padding: const EdgeInsets.all(0),
-                                    icon: Icon(
-                                      pageToShow.value == 0 ? FluentIcons.calendar_agenda_24_filled : FluentIcons.album_24_filled,
-                                      size: width * 0.05,
-                                    )
+                                SizedBox(
+                                  height: height * 0.025,
+                                  width: height * 0.025,
                                 ),
                                 IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        if (pageToShow.value == 0) {
-                                          pageToShow.value = 1;
-                                        } else {
-                                          pageToShow.value = 0;
-                                        }
-                                      });
-                                      if (pageToShow.value == 1) {
-                                        Future.delayed(const Duration(milliseconds: 200), () {
-                                          if (itemScrollController.hasClients) {
-                                            itemScrollController.animateTo(
-                                              widget.controller.settings.queue.indexOf(widget.controller.controllerQueue[widget.controller.indexNotifier.value]) * height * 0.125,
-                                              duration: const Duration(milliseconds: 250),
-                                              curve: Curves.easeInOut,
-                                            );
-                                          }
-                                        });
-                                      }
-                                    },
-                                    padding: const EdgeInsets.all(0),
-                                    icon: Icon(FluentIcons.list_20_filled,
-                                      size: width * 0.05,
-                                    )
-                                ),
-                                IconButton(
-                                    padding: const EdgeInsets.all(0),
-                                    onPressed: (){
-                                      minimizedNotifier.value = !minimizedNotifier.value;
-                                      pageToShow.value = 0;
-                                    }, icon: Icon(
-                                  minimizedNotifier.value ? FluentIcons.arrow_maximize_16_filled : FluentIcons.arrow_minimize_16_filled, color: Colors.white,
-                                  size: width * 0.05,
-                                )
+                                  onPressed: () {
+                                    _animation = Tween<double>(begin: currentSize, end: minHeight).animate(CurvedAnimation(
+                                      parent: _controller,
+                                      curve: Curves.easeOut,
+                                    ));
+                                    minimizedNotifier.value = true;
+                                    _controller.forward(from: 0);
+                                    print("Minimize");
+                                  },
+                                  icon: Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Colors.white,
+                                    size: width * 0.05,
+                                  ),
                                 ),
                               ],
                             ),
-                          AnimatedSwitcher(
+                          AnimatedContainer(
                             duration: const Duration(milliseconds: 500),
-                            child: pageToShow.value == 1?
-                            SizedBox(
-                              height: width * 0.85,
-                              width: width * 0.85,
-                              child: FutureBuilder(
-                                future: widget.controller.getQueue(),
-                                builder: (context, snapshot){
-                                  if(snapshot.hasData){
-                                    return ListView.builder(
-                                      controller: itemScrollController,
-                                      itemCount: snapshot.data!.length,
-                                      padding: EdgeInsets.only(
-                                          right: width * 0.01
-                                      ),
-                                      itemBuilder: (context, int index) {
-                                        var song = snapshot.data![index];
-                                        return AnimatedContainer(
-                                          duration: const Duration(milliseconds: 500),
-                                          curve: Curves.easeInOut,
-                                          height: height * 0.125,
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: GestureDetector(
-                                                behavior: HitTestBehavior.translucent,
-                                                onTap: () async {
-                                                  //print(widget.controller.settings.playingSongsUnShuffled[index].title);
-                                                  //widget.controller.audioPlayer.stop();
-                                                  widget.controller.indexChange(widget.controller.settings.queue[index]);
-                                                  await widget.controller.playSong();
-                                                },
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(width * 0.01),
-                                                  child: HoverContainer(
-                                                    hoverColor: const Color(0xFF242424),
-                                                    normalColor: const Color(0xFF0E0E0E),
-                                                    padding: EdgeInsets.all(width * 0.005),
-                                                    child: Row(
-                                                      children: [
-                                                        ClipRRect(
-                                                          borderRadius: BorderRadius.circular(width * 0.01),
-                                                          child: ImageWidget(
-                                                            controller: widget.controller,
-                                                            id: song.id,
-                                                            buttons: IconButton(
-                                                              onPressed: () async {
-                                                                print("Delete song from queue");
-                                                                await widget.controller.removeFromQueue(widget.controller.settings.queue[index]);
-                                                                setState(() {});
-                                                              },
-                                                              icon: Icon(
-                                                                FluentIcons.delete_16_filled,
-                                                                color: Colors.white,
-                                                                size: width * 0.01,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        SizedBox(
-                                                          width: width * 0.01,
-                                                        ),
-                                                        Column(
-                                                            mainAxisAlignment: MainAxisAlignment.center,
-                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: [
-                                                              Text(
-                                                                  song.title.toString().length > 60 ? "${song.title.toString().substring(0, 60)}..." : song.title.toString(),
-                                                                  style: TextStyle(
-                                                                    color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
-                                                                    fontSize: normalSize,
-                                                                  )
-                                                              ),
-                                                              SizedBox(
-                                                                height: height * 0.005,
-                                                              ),
-                                                              Text(song.artist == null ? "Unknown artist" : song.artist.toString().length > 60 ? "${song.artist.toString().substring(0, 60)}..." : song.artist.toString(),
-                                                                  style: TextStyle(
-                                                                    color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
-                                                                    fontSize: smallSize,
-                                                                  )
-                                                              ),
-                                                            ]
-                                                        ),
-                                                        const Spacer(),
-                                                        Text(
-                                                            "${song.duration! ~/ 60}:${(song.duration! % 60).toString().padLeft(2, '0')}",
-                                                            style: TextStyle(
-                                                              color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
-                                                              fontSize: normalSize,
-                                                            )
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                )
-                                            ),
-                                          ),
-                                        );
-
-                                      },
-                                    );
-                                  }
-                                  else if(snapshot.hasError){
-                                    return Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            FluentIcons.error_circle_24_regular,
-                                            size: height * 0.1,
-                                            color: Colors.red,
-                                          ),
-                                          Text(
-                                            "Error loading queue",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: smallSize,
-                                            ),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: (){
-                                              setState(() {});
-                                            },
-                                            child: Text(
-                                              "Retry",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: smallSize,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }
-                                  else{
-                                    return const CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    );
-                                  }
+                            height: minimizedVal ? height * 0.08 : width * 0.9,
+                            width: minimizedVal ? height * 0.08 : width * 0.9,
+                            margin: minimizedVal ? EdgeInsets.zero : EdgeInsets.only(
+                              top: height * 0.025,
+                              bottom: height * 0.01,
+                            ),
+                            child: PageView(
+                              onPageChanged: (int index){
+                                setState(() {
+                                  currentPage = index;
+                                });
+                              },
+                              controller: _pageController,
+                              scrollDirection: Axis.horizontal,
+                              scrollBehavior: ScrollConfiguration.of(context).copyWith(
+                                dragDevices: {
+                                  PointerDeviceKind.touch,
+                                  PointerDeviceKind.mouse,
                                 },
                               ),
-                            ) :
-                                pageToShow.value == 0 ?
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeInOut,
-                              height: minimizedVal? height * 0.075  : width * 0.85,
-                              width: minimizedVal ? height * 0.075  : width * 0.85,
-                              //padding: EdgeInsets.all(width * 0.01),
-                              alignment: Alignment.center,
-                              //color: Colors.red,
-                              child: GestureDetector(
-                                onTap: (){
-                                  setState(() {
-                                    pageToShow.value = 2;
-                                  });
-                                },
-                                child: FutureBuilder(
-                                    future: widget.controller.getImage(currentSong.id),
-                                    builder: (context, snapshot) {
-                                      if(snapshot.hasData) {
-                                        return AspectRatio(
-                                          aspectRatio: 1.0,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                                shape: minimizedVal ? BoxShape.circle : BoxShape.rectangle,
-                                                color: Colors.black,
-                                                borderRadius: minimizedVal ? null : BorderRadius.circular(width * 0.025),
-                                                image: DecorationImage(
-                                                  fit: BoxFit.cover,
-                                                  image: Image.memory(snapshot.data as Uint8List).image,
-                                                )
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return const CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      );
-                                    }
-                                ),
-                              ),
-                            ) :
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeInOut,
-                              height: minimizedVal? height * 0.075  : width * 0.85,
-                              width: minimizedVal ? height * 0.075  : width * 0.85,
-                              //padding: EdgeInsets.all(width * 0.01),
-                              alignment: Alignment.center,
-                              child: GestureDetector(
-                                onTap: (){
-                                  print("Lyrics");
-                                  setState(() {
-                                    pageToShow.value = 0;
-                                  });
-                                },
-                                child: FutureBuilder(
-                                    future: lyricFuture,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                SizedBox(
+                                  height: width * 0.85,
+                                  width: width * 0.85,
+                                  child: FutureBuilder(
+                                    future: widget.controller.getQueue(),
                                     builder: (context, snapshot){
                                       if(snapshot.hasData){
-                                        String plainLyric = snapshot.data![0];
-                                        var lyricModel = LyricsModelBuilder.create().bindLyricToMain(snapshot.data![1]).getModel();
-                                        return MultiValueListenableBuilder(
-                                            valueListenables: [widget.controller.sliderNotifier, widget.controller.playingNotifier],
-                                            builder: (context, value, child){
-                                              return LyricsReader(
-                                                model: lyricModel,
-                                                position: value[0],
-                                                lyricUi: lyricUI,
-                                                playing: widget.controller.playingNotifier.value,
-                                                size: Size.infinite,
-                                                padding: EdgeInsets.only(
-                                                  right: width * 0.02,
-                                                  left: width * 0.02,
-                                                ),
-                                                selectLineBuilder: (progress, confirm) {
-                                                  return Row(
-                                                    children: [
-                                                      Icon(FluentIcons.play_12_filled, color: widget.controller.colorNotifier.value),
-                                                      Expanded(
-                                                        child: MouseRegion(
-                                                          cursor: SystemMouseCursors.click,
-                                                          child: GestureDetector(
-                                                            onTap: () {
-                                                              confirm.call();
-                                                              setState(() {
-                                                                widget.controller.audioPlayer.seek(Duration(milliseconds: progress));
-                                                              });
-                                                            },
-                                                          ),
+                                        return ListView.builder(
+                                          controller: itemScrollController,
+                                          itemCount: snapshot.data!.length,
+                                          padding: EdgeInsets.only(
+                                              right: width * 0.01
+                                          ),
+                                          itemBuilder: (context, int index) {
+                                            var song = snapshot.data![index];
+                                            return AnimatedContainer(
+                                              duration: const Duration(milliseconds: 500),
+                                              curve: Curves.easeInOut,
+                                              height: height * 0.125,
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: GestureDetector(
+                                                    behavior: HitTestBehavior.translucent,
+                                                    onTap: () async {
+                                                      //print(widget.controller.settings.playingSongsUnShuffled[index].title);
+                                                      //widget.controller.audioPlayer.stop();
+                                                      widget.controller.indexChange(widget.controller.settings.queue[index]);
+                                                      await widget.controller.playSong();
+                                                    },
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(width * 0.01),
+                                                      child: HoverContainer(
+                                                        hoverColor: const Color(0xFF242424),
+                                                        normalColor: const Color(0xFF0E0E0E),
+                                                        padding: EdgeInsets.all(width * 0.005),
+                                                        child: Row(
+                                                          children: [
+                                                            ClipRRect(
+                                                              borderRadius: BorderRadius.circular(width * 0.01),
+                                                              child: ImageWidget(
+                                                                controller: widget.controller,
+                                                                id: song.id,
+                                                                buttons: IconButton(
+                                                                  onPressed: () async {
+                                                                    print("Delete song from queue");
+                                                                    await widget.controller.removeFromQueue(widget.controller.settings.queue[index]);
+                                                                    setState(() {});
+                                                                  },
+                                                                  icon: Icon(
+                                                                    FluentIcons.delete_16_filled,
+                                                                    color: Colors.white,
+                                                                    size: width * 0.01,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            SizedBox(
+                                                              width: width * 0.01,
+                                                            ),
+                                                            Column(
+                                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                                children: [
+                                                                  Text(
+                                                                      song.title.toString().length > 60 ? "${song.title.toString().substring(0, 60)}..." : song.title.toString(),
+                                                                      style: TextStyle(
+                                                                        color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
+                                                                        fontSize: normalSize,
+                                                                      )
+                                                                  ),
+                                                                  SizedBox(
+                                                                    height: height * 0.005,
+                                                                  ),
+                                                                  Text(song.artist == null ? "Unknown artist" : song.artist.toString().length > 60 ? "${song.artist.toString().substring(0, 60)}..." : song.artist.toString(),
+                                                                      style: TextStyle(
+                                                                        color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
+                                                                        fontSize: smallSize,
+                                                                      )
+                                                                  ),
+                                                                ]
+                                                            ),
+                                                            const Spacer(),
+                                                            Text(
+                                                                "${song.duration! ~/ 60}:${(song.duration! % 60).toString().padLeft(2, '0')}",
+                                                                style: TextStyle(
+                                                                  color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
+                                                                  fontSize: normalSize,
+                                                                )
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
-                                                      Text(
-                                                        //progress.toString(),
-                                                        "${progress ~/ 1000 ~/ 60}:${(progress ~/ 1000 % 60).toString().padLeft(2, '0')}",
-                                                        style: TextStyle(color: widget.controller.colorNotifier.value),
-                                                      )
-                                                    ],
-                                                  );
-                                                },
-                                                emptyBuilder: () => plainLyric.contains("No lyrics") || plainLyric.contains("Searching")?
-                                                Center(
-                                                    child: Text(
-                                                      plainLyric,
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: normalSize,
-                                                        fontFamily: 'Bahnschrift',
-                                                        fontWeight: FontWeight.normal,
-                                                      ),
                                                     )
-                                                ):
-                                                ScrollConfiguration(
-                                                  behavior: ScrollConfiguration.of(context).copyWith(
-                                                    dragDevices: {
-                                                      PointerDeviceKind.touch,
-                                                      PointerDeviceKind.mouse,
-                                                    },
-                                                  ),
-                                                  child: SingleChildScrollView(
-                                                    scrollDirection: Axis.vertical,
-                                                    physics: const BouncingScrollPhysics(),
-                                                    child: SingleChildScrollView(
-                                                        scrollDirection: Axis.horizontal,
-                                                        child: Text(
-                                                          plainLyric,
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: normalSize,
-                                                            fontFamily: 'Bahnschrift',
-                                                            fontWeight: FontWeight.normal,
-                                                          ),
-                                                        )
-                                                    ),
-                                                  ),
                                                 ),
+                                              ),
+                                            );
 
-                                              );
-                                            }
+                                          },
                                         );
                                       }
                                       else if(snapshot.hasError){
@@ -532,7 +401,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                                                 color: Colors.red,
                                               ),
                                               Text(
-                                                "Error loading lyrics",
+                                                "Error loading queue",
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                   fontSize: smallSize,
@@ -540,9 +409,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                                               ),
                                               ElevatedButton(
                                                 onPressed: (){
-                                                  setState(() {
-                                                    lyricFuture = widget.controller.getLyrics(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
-                                                  });
+                                                  setState(() {});
                                                 },
                                                 child: Text(
                                                   "Retry",
@@ -556,14 +423,185 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                                           ),
                                         );
                                       }
-                                      else {
+                                      else{
                                         return const CircularProgressIndicator(
                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                         );
                                       }
-                                    }
+                                    },
+                                  ),
                                 ),
-                              ),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeInOut,
+                                  height: minimizedVal? height * 0.075  : width * 0.85,
+                                  width: minimizedVal ? height * 0.075  : width * 0.85,
+                                  //padding: EdgeInsets.all(width * 0.01),
+                                  alignment: Alignment.center,
+                                  //color: Colors.red,
+                                  child: FutureBuilder(
+                                      future: widget.controller.getImage(currentSong.id),
+                                      builder: (context, snapshot) {
+                                        if(snapshot.hasData) {
+                                          return AspectRatio(
+                                            aspectRatio: 1.0,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                  shape: minimizedVal ? BoxShape.circle : BoxShape.rectangle,
+                                                  color: Colors.black,
+                                                  borderRadius: minimizedVal ? null : BorderRadius.circular(width * 0.025),
+                                                  image: DecorationImage(
+                                                    fit: BoxFit.cover,
+                                                    image: Image.memory(snapshot.data as Uint8List).image,
+                                                  )
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        return const CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        );
+                                      }
+                                  ),
+                                ),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeInOut,
+                                  height: minimizedVal? height * 0.075  : width * 0.85,
+                                  width: minimizedVal ? height * 0.075  : width * 0.85,
+                                  //padding: EdgeInsets.all(width * 0.01),
+                                  alignment: Alignment.center,
+                                  child: FutureBuilder(
+                                      future: lyricFuture,
+                                      builder: (context, snapshot){
+                                        if(snapshot.hasData){
+                                          String plainLyric = snapshot.data![0];
+                                          var lyricModel = LyricsModelBuilder.create().bindLyricToMain(snapshot.data![1]).getModel();
+                                          return MultiValueListenableBuilder(
+                                              valueListenables: [widget.controller.sliderNotifier, widget.controller.playingNotifier],
+                                              builder: (context, value, child){
+                                                return LyricsReader(
+                                                  model: lyricModel,
+                                                  position: value[0],
+                                                  lyricUi: lyricUI,
+                                                  playing: widget.controller.playingNotifier.value,
+                                                  size: Size.infinite,
+                                                  padding: EdgeInsets.only(
+                                                    right: width * 0.02,
+                                                    left: width * 0.02,
+                                                  ),
+                                                  selectLineBuilder: (progress, confirm) {
+                                                    return Row(
+                                                      children: [
+                                                        Icon(FluentIcons.play_12_filled, color: widget.controller.colorNotifier.value),
+                                                        Expanded(
+                                                          child: MouseRegion(
+                                                            cursor: SystemMouseCursors.click,
+                                                            child: GestureDetector(
+                                                              onTap: () {
+                                                                confirm.call();
+                                                                setState(() {
+                                                                  widget.controller.audioPlayer.seek(Duration(milliseconds: progress));
+                                                                });
+                                                              },
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          //progress.toString(),
+                                                          "${progress ~/ 1000 ~/ 60}:${(progress ~/ 1000 % 60).toString().padLeft(2, '0')}",
+                                                          style: TextStyle(color: widget.controller.colorNotifier.value),
+                                                        )
+                                                      ],
+                                                    );
+                                                  },
+                                                  emptyBuilder: () => plainLyric.contains("No lyrics") || plainLyric.contains("Searching")?
+                                                  Center(
+                                                      child: Text(
+                                                        plainLyric,
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: normalSize,
+                                                          fontFamily: 'Bahnschrift',
+                                                          fontWeight: FontWeight.normal,
+                                                        ),
+                                                      )
+                                                  ):
+                                                  ScrollConfiguration(
+                                                    behavior: ScrollConfiguration.of(context).copyWith(
+                                                      dragDevices: {
+                                                        PointerDeviceKind.touch,
+                                                        PointerDeviceKind.mouse,
+                                                      },
+                                                    ),
+                                                    child: SingleChildScrollView(
+                                                      scrollDirection: Axis.vertical,
+                                                      physics: const BouncingScrollPhysics(),
+                                                      child: SingleChildScrollView(
+                                                          scrollDirection: Axis.horizontal,
+                                                          child: Text(
+                                                            plainLyric,
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: normalSize,
+                                                              fontFamily: 'Bahnschrift',
+                                                              fontWeight: FontWeight.normal,
+                                                            ),
+                                                          )
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                );
+                                              }
+                                          );
+                                        }
+                                        else if(snapshot.hasError){
+                                          return Center(
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  FluentIcons.error_circle_24_regular,
+                                                  size: height * 0.1,
+                                                  color: Colors.red,
+                                                ),
+                                                Text(
+                                                  "Error loading lyrics",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: smallSize,
+                                                  ),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: (){
+                                                    setState(() {
+                                                      lyricFuture = widget.controller.getLyrics(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
+                                                    });
+                                                  },
+                                                  child: Text(
+                                                    "Retry",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: smallSize,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }
+                                        else {
+                                          return const CircularProgressIndicator(
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          );
+                                        }
+                                      }
+                                  ),
+                                ),
+
+                              ],
+
                             ),
                           ),
                           Container(
@@ -637,7 +675,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                                           timeLabelLocation: minimizedNotifier.value ? TimeLabelLocation.sides : TimeLabelLocation.below,
                                           timeLabelTextStyle: TextStyle(
                                             color: Colors.white,
-                                            fontSize: height * 0.02,
+                                            fontSize: height * 0.0175,
                                             fontFamily: 'Bahnschrift',
                                             fontWeight: FontWeight.normal,
                                           ),
@@ -729,6 +767,70 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> {
                               ],
                             ),
                           ),
+                          if (!minimizedVal)
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                SizedBox(
+                                  height: height * 0.1,
+                                ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                        onPressed: () {
+                                          _pageController.animateToPage(0,
+                                              duration: const Duration(milliseconds: 500),
+                                              curve: Curves.easeIn
+                                          );
+                                        },
+                                        padding: const EdgeInsets.all(0),
+                                        icon: Icon(
+                                          currentPage == 0 ? Icons.view_list_rounded : Icons.view_list_outlined,
+                                          size: width * 0.05,
+                                        )
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: height * 0.025,
+                                      color: Colors.white,
+                                    ),
+                                    IconButton(
+                                        onPressed: () {
+                                          _pageController.animateToPage(1,
+                                              duration: const Duration(milliseconds: 500),
+                                              curve: Curves.easeIn
+                                          );
+                                        },
+                                        padding: const EdgeInsets.all(0),
+                                        icon: Icon(
+                                          currentPage == 1  ? Icons.photo_size_select_actual_rounded : Icons.photo_size_select_actual_outlined,
+                                          size: width * 0.05,
+                                        )
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: height * 0.025,
+                                      color: Colors.white,
+                                    ),
+                                    IconButton(
+                                        padding: const EdgeInsets.all(0),
+                                        onPressed: (){
+                                          _pageController.animateToPage(2,
+                                              duration: const Duration(milliseconds: 500),
+                                              curve: Curves.easeIn
+                                          );
+                                        }, icon: Icon(
+                                      currentPage == 2 ? Icons.lyrics_rounded : Icons.lyrics_outlined,
+                                      size: width * 0.05,
+                                    )
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+
                         ],
                       ),
                     ),

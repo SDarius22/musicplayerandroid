@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'controller/controller.dart';
 import 'controller/objectBox.dart';
+import 'domain/settings_type.dart';
 import 'screens/main_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -22,7 +23,14 @@ Future<void> main(List<String> args) async {
 
   await ObjectBox.initialize();
 
-
+  var settingsBox = ObjectBox.store.box<Settings>();
+  Settings settings = settingsBox.query().build().findFirst() ?? Settings();
+  if (args.isNotEmpty) {
+    settings.queue.clear();
+    settings.queue.addAll(args);
+    settings.index = 0;
+  }
+  settingsBox.put(settings);
 
   final docsDir = await getApplicationDocumentsDirectory();
   File logFile = File('${docsDir.path}/.musicplayer database/log.txt');
@@ -30,7 +38,7 @@ Future<void> main(List<String> args) async {
   // if (args.isNotEmpty) {
   //   argsFile.writeAsStringSync(args.join(' '));
   // }
-  Controller controller = Controller(args);
+  Controller controller = Controller();
 
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.dumpErrorToConsole(details, forceReport: true);
