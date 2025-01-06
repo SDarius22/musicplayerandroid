@@ -1,17 +1,17 @@
 import 'dart:ui';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/controller/worker_controller.dart';
 import 'package:musicplayerandroid/domain/playlist_type.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../controller/controller.dart';
-import '../utils/hover_widget/hover_widget.dart';
-import '../utils/objectbox.g.dart';
+import '../../controller/app_manager.dart';
+import '../../controller/data_controller.dart';
+import '../../utils/fluenticons/fluenticons.dart';
+import '../../utils/hover_widget/hover_widget.dart';
 
 class CreateScreen extends StatefulWidget {
-  final Controller controller;
   final List<String>? paths;
-  final String? name;
-  const CreateScreen({super.key, required this.controller, this.paths, this.name});
+  final String name;
+  const CreateScreen({super.key, this.paths, required this.name});
 
   @override
   _CreateScreenState createState() => _CreateScreenState();
@@ -27,7 +27,7 @@ class _CreateScreenState extends State<CreateScreen> {
 
   @override
   void initState() {
-    playlistName = widget.name ?? "";
+    playlistName = widget.name;
     // if (widget.paths != null && widget.paths!.isNotEmpty) {
     //   for (var path in widget.paths!) {
     //     print(path);
@@ -41,11 +41,13 @@ class _CreateScreenState extends State<CreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dc = DataController();
+    final am = AppManager();
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    //var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    // var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Scaffold(
       body: Container(
         width: width,
@@ -70,13 +72,13 @@ class _CreateScreenState extends State<CreateScreen> {
                     Navigator.pop(context);
                   },
                   icon: Icon(
-                    FluentIcons.arrow_left_16_filled,
+                    FluentIcons.back,
                     size: height * 0.02,
                     color: Colors.white,
                   ),
                 ),
                 Text(
-                  widget.name == null ? "New playlist" : "Import playlist",
+                  widget.name.isEmpty ? "Create" : "Import",
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: normalSize,
@@ -87,23 +89,23 @@ class _CreateScreenState extends State<CreateScreen> {
                 ElevatedButton(
                     onPressed: (){
                       if (playlistName.isEmpty) {
-                        widget.controller.showNotification("Playlist name cannot be empty", 3500);
+                        am.showNotification("Playlist name cannot be empty", 3500);
                         return;
                       }
                       if (selected.isEmpty) {
-                        widget.controller.showNotification("No songs selected", 3500);
+                        am.showNotification("No songs selected", 3500);
                         return;
                       }
                       print("Create new playlist");
                       PlaylistType newPlaylist = PlaylistType();
                       newPlaylist.name = playlistName;
-                      newPlaylist.songs = selected.map((e) => e.data).toList();
+                      newPlaylist.paths = selected.map((e) => e.data).toList();
                       newPlaylist.nextAdded = playlistAdd;
-                      widget.controller.createPlaylist(newPlaylist);
+                      dc.createPlaylist(newPlaylist);
                       Navigator.pop(context);
                     },
                     child: Text(
-                      widget.name == null ? "Create" : "Import",
+                      widget.name.isEmpty ? "Create" : "Import",
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: normalSize
@@ -154,7 +156,7 @@ class _CreateScreenState extends State<CreateScreen> {
                 DropdownButton<String>(
                     value: playlistAdd,
                     icon: Icon(
-                      FluentIcons.chevron_down_16_filled,
+                      FluentIcons.down,
                       color: Colors.white,
                       size: height * 0.025,
                     ),
@@ -223,7 +225,7 @@ class _CreateScreenState extends State<CreateScreen> {
                           color: Colors.white,
                           fontSize: smallSize,
                         ),
-                        labelText: 'Search', suffixIcon: Icon(FluentIcons.search_16_filled, color: Colors.white, size: height * 0.02,)
+                        labelText: 'Search', suffixIcon: Icon(FluentIcons.search, color: Colors.white, size: height * 0.02,)
                     ),
                   ),
                   SizedBox(
@@ -232,7 +234,7 @@ class _CreateScreenState extends State<CreateScreen> {
                   SizedBox(
                     height: height * 0.5,
                     child: FutureBuilder(
-                        future: widget.controller.searchLocal(search),
+                        future: DataController.getSongs(search),
                         builder: (context, snapshot) {
                           if(snapshot.hasData){
                             List<SongModel> songs = snapshot.data ?? [];
@@ -268,7 +270,7 @@ class _CreateScreenState extends State<CreateScreen> {
                                               ClipRRect(
                                                   borderRadius: BorderRadius.circular(width * 0.01),
                                                   child: FutureBuilder(
-                                                    future: widget.controller.getImage(song.id),
+                                                    future: WorkerController.getImage(song.id),
                                                     builder: (context, snapshot) {
                                                       return AspectRatio(
                                                         aspectRatio: 1.0,
@@ -292,7 +294,7 @@ class _CreateScreenState extends State<CreateScreen> {
                                                                   color: Colors.black.withOpacity(0.3),
                                                                   alignment: Alignment.center,
                                                                   child: IconButton(
-                                                                    icon: Icon(selected.contains(song) ? FluentIcons.subtract_16_filled : FluentIcons.add_16_filled, color: Colors.white, size: height * 0.03,),
+                                                                    icon: Icon(selected.contains(song) ? FluentIcons.subtract : FluentIcons.add, color: Colors.white, size: height * 0.03,),
                                                                     onPressed: () {
                                                                       print("Add");
                                                                       setState(() {
@@ -377,7 +379,7 @@ class _CreateScreenState extends State<CreateScreen> {
                                               ClipRRect(
                                                   borderRadius: BorderRadius.circular(width * 0.01),
                                                   child: FutureBuilder(
-                                                    future: widget.controller.getImage(song.id),
+                                                    future: WorkerController.getImage(song.id),
                                                     builder: (context, snapshot) {
                                                       return AspectRatio(
                                                         aspectRatio: 1.0,
@@ -400,7 +402,7 @@ class _CreateScreenState extends State<CreateScreen> {
                                                                 child: Container(
                                                                   alignment: Alignment.center,
                                                                   child: Icon(
-                                                                    FluentIcons.checkmark_16_filled,
+                                                                    FluentIcons.check,
                                                                     size: height * 0.03,
                                                                     color: Colors.white,
                                                                   ),

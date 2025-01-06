@@ -1,15 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:musicplayerandroid/screens/create_screen.dart';
-import 'package:musicplayerandroid/screens/export_screen.dart';
-import 'package:musicplayerandroid/screens/main_screen.dart';
-import '../controller/controller.dart';
+import 'package:musicplayerandroid/controller/audio_player_controller.dart';
+import 'package:musicplayerandroid/controller/settings_controller.dart';
+import 'package:musicplayerandroid/interface/screens/create_screen.dart';
+import 'package:musicplayerandroid/interface/screens/export_screen.dart';
+import '../../controller/app_manager.dart';
+import '../../utils/fluenticons/fluenticons.dart';
 
 class SettingsScreen extends StatefulWidget {
-  final Controller controller;
-  const SettingsScreen({super.key, required this.controller});
+  const SettingsScreen({super.key});
   @override
   _SettingsScreenState createState() => _SettingsScreenState();
 }
@@ -19,11 +19,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final am = AppManager();
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -115,9 +116,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const Spacer(),
                   DropdownButton<String>(
-                      value: widget.controller.settings.queueAdd,
+                      value: SettingsController.queueAdd,
                       icon: Icon(
-                        FluentIcons.chevron_down_16_filled,
+                        FluentIcons.down,
                         color: Colors.white,
                         size: height * 0.025,
                       ),
@@ -148,9 +149,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                       onChanged: (String? newValue){
                         setState(() {
-                          widget.controller.settings.queueAdd = newValue ?? "last";
+                          SettingsController.queueAdd = newValue ?? "last";
                         });
-                        widget.controller.settingsBox.put(widget.controller.settings);
                       }
                   ),
 
@@ -198,9 +198,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Spacer(),
                   DropdownButton<String>(
-                      value: widget.controller.settings.queuePlay,
+                      value: SettingsController.queuePlay,
                       icon: Icon(
-                        FluentIcons.chevron_down_16_filled,
+                        FluentIcons.down,
                         color: Colors.white,
                         size: height * 0.025,
                       ),
@@ -227,9 +227,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                       onChanged: (String? newValue){
                         setState(() {
-                          widget.controller.settings.queuePlay = newValue ?? "all";
+                          SettingsController.queuePlay = newValue ?? "all";
                         });
-                        widget.controller.settingsBox.put(widget.controller.settings);
                       }
                   ),
 
@@ -292,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Spacer(),
                   ValueListenableBuilder(
-                      valueListenable: widget.controller.speedNotifier,
+                      valueListenable: SettingsController.speedNotifier,
                       builder: (context, value, child){
                         return SliderTheme(
                           data: SliderThemeData(
@@ -300,7 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             thumbColor: Colors.white,
                             thumbShape: RoundSliderThumbShape(enabledThumbRadius: height * 0.0075),
                             showValueIndicator: ShowValueIndicator.always,
-                            activeTrackColor: widget.controller.colorNotifier2.value,
+                            activeTrackColor: SettingsController.lightColorNotifier.value,
                             inactiveTrackColor: Colors.white,
                             valueIndicatorColor: Colors.white,
                             valueIndicatorTextStyle: TextStyle(
@@ -317,8 +316,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             mouseCursor: SystemMouseCursors.click,
                             value: value,
                             onChanged: (double value) {
-                              widget.controller.speedNotifier.value = value;
-                              widget.controller.audioPlayer.setPlaybackRate(value);
+                              SettingsController.speedNotifier.value = value;
+                              AudioPlayerController.audioPlayer.setSpeed(value);
                             },
                           ),
                         );
@@ -357,7 +356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Spacer(),
                   ValueListenableBuilder(
-                      valueListenable: widget.controller.balanceNotifier,
+                      valueListenable: SettingsController.balanceNotifier,
                       builder: (context, value, child){
                         return SliderTheme(
                           data: SliderThemeData(
@@ -365,7 +364,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             thumbColor: Colors.white,
                             thumbShape: RoundSliderThumbShape(enabledThumbRadius: height * 0.0075),
                             showValueIndicator: ShowValueIndicator.always,
-                            activeTrackColor: widget.controller.colorNotifier2.value,
+                            activeTrackColor: SettingsController.lightColorNotifier.value,
                             inactiveTrackColor: Colors.white,
                             valueIndicatorColor: Colors.white,
                             valueIndicatorTextStyle: TextStyle(
@@ -382,8 +381,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             value: value,
                             label: value < 0 ? "Left : ${value.toStringAsPrecision(2)}" : value > 0 ? "Right : ${value.toStringAsPrecision(2)}" : "Center",
                             onChanged: (double value) {
-                              widget.controller.balanceNotifier.value = value;
-                              widget.controller.audioPlayer.setBalance(value);
+                              SettingsController.balanceNotifier.value = value;
+                              // AudioPlayerController.audioPlayer.setBalance(value);
                             },
                           ),
                         );
@@ -422,12 +421,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Spacer(),
                   ValueListenableBuilder(
-                      valueListenable: widget.controller.timerNotifier,
+                      valueListenable: SettingsController.sleepTimerNotifier,
                       builder: (context, value, child){
+                        String timer = value == 0 ? "Off" : value == 1 ? "1 minute" : value == 15 ? "15 minutes" : value == 30 ? "30 minutes" : value == 45 ? "45 minutes" : value == 60 ? "1 hour" : value == 120 ? "2 hours" : value == 180 ? "3 hours" : "4 hours";
                         return DropdownButton<String>(
-                            value: value,
+                            value: timer,
                             icon: Icon(
-                              FluentIcons.chevron_down_16_filled,
+                              FluentIcons.down,
                               color: Colors.white,
                               size: height * 0.025,
                             ),
@@ -481,7 +481,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ],
                             onChanged: (String? newValue){
-                              widget.controller.setTimer(newValue ?? "Off");
+                              final apc = AudioPlayerController();
+                              apc.setTimer(newValue ?? "Off");
                             }
                         );
                       }
@@ -544,16 +545,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Spacer(),
                   Switch(
-                    value: widget.controller.settings.appNotifications,
+                    value: SettingsController.appNotifications,
                     onChanged: (value){
                       setState(() {
-                        widget.controller.settings.appNotifications = value;
+                        SettingsController.appNotifications = value;
                       });
-                      widget.controller.settingsBox.put(widget.controller.settings);
                     },
-                    trackColor: WidgetStateProperty.all(widget.controller.colorNotifier2.value),
+                    trackColor: WidgetStateProperty.all(SettingsController.lightColorNotifier.value),
                     thumbColor: WidgetStateProperty.all(Colors.white),
-                    thumbIcon: WidgetStateProperty.all(widget.controller.settings.appNotifications ? const Icon(Icons.check, color: Colors.black,) : const Icon(Icons.close, color: Colors.black,)),
+                    thumbIcon: WidgetStateProperty.all(SettingsController.appNotifications ? const Icon(Icons.check, color: Colors.black,) : const Icon(Icons.close, color: Colors.black,)),
                     activeColor: Colors.white,
                   ),
 
@@ -593,10 +593,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SizedBox(
                     width: width * 0.3,
                     child: TextField(
-                      controller: TextEditingController(text: widget.controller.settings.deezerARL),
+                      controller: TextEditingController(text: SettingsController.deezerARL),
                       onChanged: (value){
-                        widget.controller.settings.deezerARL = value;
-                        widget.controller.settingsBox.put(widget.controller.settings);
+                        SettingsController.deezerARL = value;
                       },
                       style: TextStyle(
                         fontSize: normalSize,
@@ -681,17 +680,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Spacer(),
                   IconButton(
                       onPressed: () async {
-                        FilePickerResult? result = await FilePicker.platform.pickFiles(initialDirectory: widget.controller.settings.directory, type: FileType.custom, allowedExtensions: ['m3u'], allowMultiple: false);
+                        FilePickerResult? result = await FilePicker.platform.pickFiles(initialDirectory: SettingsController.directory, type: FileType.custom, allowedExtensions: ['m3u'], allowMultiple: false);
                         if(result != null) {
                           File file = File(result.files.single.path ?? "");
                           List<String> lines = file.readAsLinesSync();
                           String playlistName = file.path.split("/").last.split(".").first;
                           lines.removeAt(0);
-                          widget.controller.navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => CreateScreen(controller: widget.controller, name: playlistName, paths: lines,)));
+                          am.navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => CreateScreen(name: playlistName, paths: lines,)));
                         }
 
                       },
-                      icon: Icon(FluentIcons.open_12_regular, color: Colors.white, size: height * 0.03,)
+                      icon: Icon(FluentIcons.open, color: Colors.white, size: height * 0.03,)
                   ),
                 ],
               ),
@@ -727,9 +726,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Spacer(),
                   IconButton(
                       onPressed: (){
-                        widget.controller.navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => ExportScreen(controller: widget.controller,)));
+                        am.navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) => ExportScreen()));
                       },
-                      icon: Icon(FluentIcons.open_12_regular, color: Colors.white, size: height * 0.03,)
+                      icon: Icon(FluentIcons.open, color: Colors.white, size: height * 0.03,)
                   ),
                 ],
               ),

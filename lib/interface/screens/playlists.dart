@@ -1,21 +1,17 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:collection/collection.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/screens/image_widget.dart';
-import 'package:musicplayerandroid/screens/playlist_screen.dart';
-import 'package:on_audio_query/on_audio_query.dart';
-import '../controller/controller.dart';
-import '../domain/playlist_type.dart';
-import '../utils/hover_widget/stack_hover_widget.dart';
-import '../utils/objectbox.g.dart';
-import 'add_screen.dart';
+import 'package:musicplayerandroid/controller/data_controller.dart';
+import 'package:musicplayerandroid/interface/screens/playlist_screen.dart';
+import 'package:musicplayerandroid/interface/widgets/image_widget.dart';
+import '../../domain/playlist_type.dart';
+import '../../repository/objectbox.g.dart';
+import '../../utils/fluenticons/fluenticons.dart';
+import '../../utils/hover_widget/stack_hover_widget.dart';
 import 'create_screen.dart';
 
 class Playlists extends StatefulWidget{
-  final Controller controller;
-  const Playlists({super.key, required this.controller});
+  const Playlists({super.key});
 
   @override
   _PlaylistsState createState() => _PlaylistsState();
@@ -33,10 +29,11 @@ class _PlaylistsState extends State<Playlists>{
   @override
   void initState(){
     super.initState();
-    playlistsFuture = widget.controller.getPlaylists('');
-    widget.controller.playingNotifier.addListener(() {
+    playlistsFuture = DataController.getPlaylists('');
+    Stream<Query> query = DataController.playlistBox.query().watch(triggerImmediately: true);
+    query.listen((event) {
       setState(() {
-        playlistsFuture = widget.controller.getPlaylists('');
+        playlistsFuture = DataController.getPlaylists(value);
       });
     });
   }
@@ -46,7 +43,7 @@ class _PlaylistsState extends State<Playlists>{
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
         value = query;
-        playlistsFuture = widget.controller.getPlaylists(query);
+        playlistsFuture = DataController.getPlaylists(query);
       });
     });
   }
@@ -62,8 +59,9 @@ class _PlaylistsState extends State<Playlists>{
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    // var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Column(
       children: [
         Container(
@@ -99,7 +97,7 @@ class _PlaylistsState extends State<Playlists>{
                 color: Colors.white,
                 fontSize: smallSize,
               ),
-              labelText: 'Search', suffixIcon: Icon(FluentIcons.search_16_filled, color: Colors.white, size: height * 0.02,),
+              labelText: 'Search', suffixIcon: Icon(FluentIcons.search, color: Colors.white, size: height * 0.02,),
             ),
           ),
         ),
@@ -113,7 +111,7 @@ class _PlaylistsState extends State<Playlists>{
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          FluentIcons.error_circle_24_regular,
+                          FluentIcons.error,
                           size: height * 0.1,
                           color: Colors.red,
                         ),
@@ -165,7 +163,7 @@ class _PlaylistsState extends State<Playlists>{
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
                           onTap: (){
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => CreateScreen(controller: widget.controller)));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => CreateScreen(name: value,)));
                           },
                           child: Column(
                             children: [
@@ -221,18 +219,17 @@ class _PlaylistsState extends State<Playlists>{
                         child: GestureDetector(
                           onTap: () {
                             //print(playlist.name);
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistScreen(controller: widget.controller, playlist: playlist)));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistScreen(playlist: playlist)));
                           },
                           child: Column(
                             children: [
-                              // ClipRRect(
-                              //   borderRadius: BorderRadius.circular(width * 0.01),
-                              //   child: ImageWidget(
-                              //     controller: widget.controller,
-                              //     path: playlist.songs.first,
-                              //     heroTag: playlist.name,
-                              //   ),
-                              // ),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(width * 0.01),
+                                child: ImageWidget(
+                                  path: playlist.paths.first,
+                                  heroTag: playlist.name,
+                                ),
+                              ),
                               SizedBox(
                                 height: height * 0.005,
                               ),

@@ -1,23 +1,24 @@
 import 'dart:ui';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/utils/hover_widget/hover_container.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../utils/multivaluelistenablebuilder/mvlb.dart';
-import '../controller/controller.dart';
-import '../utils/lyric_reader/lyrics_reader.dart';
-import '../utils/progress_bar/audio_video_progress_bar.dart';
+import '../../controller/app_manager.dart';
+import '../../controller/audio_player_controller.dart';
+import '../../controller/data_controller.dart';
+import '../../controller/settings_controller.dart';
+import '../../controller/worker_controller.dart';
+import '../../main.dart';
+import '../../utils/fluenticons/fluenticons.dart';
+import '../../utils/multivaluelistenablebuilder/mvlb.dart';
+import '../../utils/lyric_reader/lyrics_reader.dart';
+import '../../utils/progress_bar/audio_video_progress_bar.dart';
+import '../../utils/text_scroll/text_scroll.dart';
 import 'image_widget.dart';
 import 'package:flutter/foundation.dart';
-import 'package:text_scroll/text_scroll.dart';
 
 
 class SongPlayerWidget extends StatefulWidget {
-  final Controller controller;
-  const SongPlayerWidget(
-      {super.key,
-        required this.controller,
-      });
+  const SongPlayerWidget({super.key});
 
   @override
   _SongPlayerWidgetState createState() => _SongPlayerWidgetState();
@@ -26,7 +27,6 @@ class SongPlayerWidget extends StatefulWidget {
 class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProviderStateMixin {
   late ScrollController itemScrollController;
   late Future songFuture;
-  late Future lyricFuture;
   var lyricUI = UINetease(
       defaultSize : 20,
       defaultExtSize : 20,
@@ -39,7 +39,6 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
       lyricBaseLine : LyricBaseLine.CENTER,
       highlight : false
   );
-  ValueNotifier<bool> minimizedNotifier = ValueNotifier<bool>(true);
 
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -55,13 +54,20 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
 
   @override
   void initState() {
-    songFuture = widget.controller.getSong(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
-    lyricFuture = widget.controller.getLyrics(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
+    songFuture = Future(() async {
+      SongModel song = SongModel({});
+      try {
+        song = await DataController.getSong(SettingsController.currentSongPath);
+      } catch (e) {
+        print(e);
+      }
+      return song;
+    });
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       itemScrollController = ScrollController();
     });
-    _controller = AnimationController(vsync: this, duration: Duration(milliseconds: 300));
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _animation = Tween<double>(begin: minHeight, end: maxHeight).animate(CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOut,
@@ -71,38 +77,35 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
         currentSize = _animation.value;
       });
     });
-    widget.controller.colorNotifier.addListener(() {
+    SettingsController.lightColorNotifier.addListener(() {
       setState(() {
         lyricUI = UINetease(
-            defaultSize : MediaQuery.of(context).size.height * 0.023,
-            defaultExtSize : MediaQuery.of(context).size.height * 0.02,
-            otherMainSize : MediaQuery.of(context).size.height * 0.02,
+            defaultSize : MediaQuery.of(context).size.height * 0.022,
+            defaultExtSize : MediaQuery.of(context).size.height * 0.020,
+            otherMainSize : MediaQuery.of(context).size.height * 0.020,
             bias : 0.5,
             lineGap : 5,
             inlineGap : 5,
-            highlightColor: widget.controller.colorNotifier.value,
+            highlightColor: SettingsController.lightColorNotifier.value,
             lyricAlign : LyricAlign.CENTER,
             lyricBaseLine : LyricBaseLine.CENTER,
             highlight : false
         );
       });
     });
-    widget.controller.indexNotifier.addListener(() {
+    SettingsController.indexNotifier.addListener((){
+      print(SettingsController.currentSongPath);
       setState(() {
-        songFuture = widget.controller.getSong(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
-        lyricFuture = widget.controller.getLyrics(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
-        lyricUI = UINetease(
-            defaultSize : MediaQuery.of(context).size.height * 0.023,
-            defaultExtSize : MediaQuery.of(context).size.height * 0.02,
-            otherMainSize : MediaQuery.of(context).size.height * 0.02,
-            bias : 0.5,
-            lineGap : 5,
-            inlineGap : 5,
-            highlightColor: widget.controller.colorNotifier.value,
-            lyricAlign : LyricAlign.CENTER,
-            lyricBaseLine : LyricBaseLine.CENTER,
-            highlight : false
-        );
+        songFuture = Future(() async {
+          SongModel song = SongModel({});
+          try {
+            song = await DataController.getSong(SettingsController.currentSongPath);
+          } catch (e) {
+            print(e);
+          }
+          return song;
+        });
+
       });
     });
   }
@@ -110,20 +113,36 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
   @override
   void dispose() {
     itemScrollController.dispose();
-    widget.controller.colorNotifier.removeListener(() {});
+    SettingsController.lightColorNotifier.removeListener(() {});
+    SettingsController.indexNotifier.removeListener(() {});
     super.dispose();
   }
 
 
   @override
   Widget build(BuildContext context) {
+    final dc = DataController();
+    final am = AppManager();
+    final apc = AudioPlayerController();
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    var boldSize = height * 0.018;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
+    lyricUI = UINetease(
+        defaultSize : MediaQuery.of(context).size.height * 0.022,
+        defaultExtSize : MediaQuery.of(context).size.height * 0.020,
+        otherMainSize : MediaQuery.of(context).size.height * 0.020,
+        bias : 0.5,
+        lineGap : 5,
+        inlineGap : 5,
+        highlightColor: SettingsController.lightColorNotifier.value,
+        lyricAlign : LyricAlign.CENTER,
+        lyricBaseLine : LyricBaseLine.CENTER,
+        highlight : false
+    );
     return ValueListenableBuilder(
-        valueListenable: minimizedNotifier,
+        valueListenable: am.minimizedNotifier,
         builder: (context, minimizedVal, child){
           return FutureBuilder(
               future: songFuture,
@@ -135,7 +154,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          FluentIcons.error_circle_24_regular,
+                          FluentIcons.error,
                           size: height * 0.1,
                           color: Colors.red,
                         ),
@@ -149,7 +168,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                         ElevatedButton(
                           onPressed: (){
                             setState(() {
-                              songFuture = widget.controller.getSong(widget.controller.controllerQueue[0]);
+                              // songFuture = widget.controller.getSong(widget.controller.controllerQueue[0]);
                             });
                           },
                           child: Text(
@@ -165,7 +184,11 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                   );
                 }
                 if(snapshot.hasData){
-                  SongModel currentSong = snapshot.data as SongModel;
+                  SongModel currentSong = snapshot.data;
+                  print(currentSong.id);
+                  if (currentSong.getMap.isEmpty) {
+                    return const SizedBox();
+                  }
                   return GestureDetector(
                     onTap: () {
                       if (minimizedVal) {
@@ -173,7 +196,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                           parent: _controller,
                           curve: Curves.easeOut,
                         ));
-                        minimizedNotifier.value = false;
+                        am.minimizedNotifier.value = false;
                         _controller.forward(from: 0);
                       }
                     },
@@ -195,7 +218,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                           parent: _controller,
                           curve: Curves.easeOut,
                         ));
-                        minimizedNotifier.value = false;
+                        am.minimizedNotifier.value = false;
                       }
                       // Snap down if the user dragged down, or if the drag velocity was downwards
                       else if (screenFractionDragged >= snapThreshold && details.primaryVelocity! > 0) {
@@ -204,7 +227,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                           parent: _controller,
                           curve: Curves.easeOut,
                         ));
-                        minimizedNotifier.value = true;
+                        am.minimizedNotifier.value = true;
                       }
                       else {
                         print("Snap to closest point");
@@ -233,8 +256,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                         bottom: width * 0.025,
                       ) : EdgeInsets.zero,
                       decoration: BoxDecoration(
-                        color: minimizedVal ? widget.controller.colorNotifier2.value : const Color(0xFF0E0E0E),
-                        //color: values ? widget.controller.colorNotifier2.value.withOpacity(values[1] ? 0.0 : 1) : Colors.transparent,
+                        color: minimizedVal ? SettingsController.darkColorNotifier.value : const Color(0xFF0E0E0E),
                         borderRadius: minimizedVal ? BorderRadius.circular(width * 0.1) : BorderRadius.circular(0),
                       ),
                       child: Wrap(
@@ -254,7 +276,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                       parent: _controller,
                                       curve: Curves.easeOut,
                                     ));
-                                    minimizedNotifier.value = true;
+                                    am.minimizedNotifier.value = true;
                                     _controller.forward(from: 0);
                                     print("Minimize");
                                   },
@@ -293,18 +315,18 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                 SizedBox(
                                   height: width * 0.85,
                                   width: width * 0.85,
-                                  child: FutureBuilder(
-                                    future: widget.controller.getQueue(),
-                                    builder: (context, snapshot){
-                                      if(snapshot.hasData){
-                                        return ListView.builder(
-                                          controller: itemScrollController,
-                                          itemCount: snapshot.data!.length,
-                                          padding: EdgeInsets.only(
-                                              right: width * 0.01
-                                          ),
-                                          itemBuilder: (context, int index) {
-                                            var song = snapshot.data![index];
+                                  child: ListView.builder(
+                                    controller: itemScrollController,
+                                    itemCount: SettingsController.queue.length,
+                                    padding: EdgeInsets.only(
+                                        right: width * 0.01
+                                    ),
+                                    itemBuilder: (context, int index) {
+                                      return FutureBuilder(
+                                        future: DataController.getSong(SettingsController.queue[index]),
+                                        builder: (context, snapshot){
+                                          if(snapshot.hasData){
+                                            var song = snapshot.data as SongModel;
                                             return AnimatedContainer(
                                               duration: const Duration(milliseconds: 500),
                                               curve: Curves.easeInOut,
@@ -316,8 +338,8 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                     onTap: () async {
                                                       //print(widget.controller.settings.playingSongsUnShuffled[index].title);
                                                       //widget.controller.audioPlayer.stop();
-                                                      widget.controller.indexChange(widget.controller.settings.queue[index]);
-                                                      await widget.controller.playSong();
+                                                      SettingsController.index = SettingsController.currentQueue.indexOf(SettingsController.queue[index]);
+                                                      await audioHandler.play();
                                                     },
                                                     child: ClipRRect(
                                                       borderRadius: BorderRadius.circular(width * 0.01),
@@ -330,16 +352,15 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                             ClipRRect(
                                                               borderRadius: BorderRadius.circular(width * 0.01),
                                                               child: ImageWidget(
-                                                                controller: widget.controller,
                                                                 id: song.id,
                                                                 buttons: IconButton(
                                                                   onPressed: () async {
                                                                     print("Delete song from queue");
-                                                                    await widget.controller.removeFromQueue(widget.controller.settings.queue[index]);
+                                                                    await dc.removeFromQueue(SettingsController.queue[index]);
                                                                     setState(() {});
                                                                   },
                                                                   icon: Icon(
-                                                                    FluentIcons.delete_16_filled,
+                                                                    FluentIcons.trash,
                                                                     color: Colors.white,
                                                                     size: width * 0.01,
                                                                   ),
@@ -353,19 +374,29 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                                 mainAxisAlignment: MainAxisAlignment.center,
                                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                                 children: [
-                                                                  Text(
-                                                                      song.title.toString().length > 60 ? "${song.title.toString().substring(0, 60)}..." : song.title.toString(),
+                                                                  SizedBox(
+                                                                    width: width * 0.15,
+                                                                    child: TextScroll(
+                                                                      song.title,
+                                                                      mode: TextScrollMode.bouncing,
+                                                                      velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
                                                                       style: TextStyle(
-                                                                        color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
+                                                                        color: SettingsController.currentSongPath != song.data ? Colors.white : Colors.blue,
                                                                         fontSize: normalSize,
-                                                                      )
+                                                                        fontFamily: 'Bahnschrift',
+                                                                        fontWeight: FontWeight.normal,
+                                                                      ),
+                                                                      pauseOnBounce: const Duration(seconds: 2),
+                                                                      delayBefore: const Duration(seconds: 2),
+                                                                      pauseBetween: const Duration(seconds: 2),
+                                                                    ),
                                                                   ),
                                                                   SizedBox(
                                                                     height: height * 0.005,
                                                                   ),
-                                                                  Text(song.artist == null ? "Unknown artist" : song.artist.toString().length > 60 ? "${song.artist.toString().substring(0, 60)}..." : song.artist.toString(),
+                                                                  Text(song.artist.toString().length > 60 ? "${song.artist.toString().substring(0, 60)}..." : song.artist.toString(),
                                                                       style: TextStyle(
-                                                                        color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
+                                                                        color: SettingsController.currentSongPath != song.data ? Colors.white : Colors.blue,
                                                                         fontSize: smallSize,
                                                                       )
                                                                   ),
@@ -373,9 +404,9 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                             ),
                                                             const Spacer(),
                                                             Text(
-                                                                "${song.duration! ~/ 60}:${(song.duration! % 60).toString().padLeft(2, '0')}",
+                                                                song.duration != null ? "${song.duration! ~/ 60000}:${(song.duration! % 60000).toString().padLeft(2, '0')}" : "0:00",
                                                                 style: TextStyle(
-                                                                  color: widget.controller.settings.queue[index] != widget.controller.controllerQueue[widget.controller.indexNotifier.value] ? Colors.white : Colors.blue,
+                                                                  color: SettingsController.currentSongPath != song.data ? Colors.white : Colors.blue,
                                                                   fontSize: normalSize,
                                                                 )
                                                             ),
@@ -386,48 +417,75 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                 ),
                                               ),
                                             );
+                                          }
+                                          else {
+                                            return AnimatedContainer(
+                                              duration: const Duration(milliseconds: 500),
+                                              curve: Curves.easeInOut,
+                                              height: height * 0.125,
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: GestureDetector(
+                                                    behavior: HitTestBehavior.translucent,
+                                                    onTap: () async {
+                                                      //print(widget.controller.settings.playingSongsUnShuffled[index].title);
+                                                      //widget.controller.audioPlayer.stop();
+                                                      SettingsController.index = SettingsController.currentQueue.indexOf(SettingsController.queue[index]);
+                                                      await audioHandler.play();
+                                                    },
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(width * 0.01),
+                                                      child: HoverContainer(
+                                                        hoverColor: const Color(0xFF242424),
+                                                        normalColor: const Color(0xFF0E0E0E),
+                                                        padding: EdgeInsets.all(width * 0.005),
+                                                        child: Row(
+                                                          children: [
+                                                            ClipRRect(
+                                                              borderRadius: BorderRadius.circular(width * 0.01),
+                                                              child: const ImageWidget(
+                                                                id: -1,
+                                                              ),
+                                                            ),
+                                                            SizedBox(
+                                                              width: width * 0.01,
+                                                            ),
+                                                            SizedBox(
+                                                              width: width * 0.15,
+                                                              child: TextScroll(
+                                                                'Loading song details...',
+                                                                mode: TextScrollMode.bouncing,
+                                                                velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
+                                                                style: TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: normalSize,
+                                                                  fontFamily: 'Bahnschrift',
+                                                                  fontWeight: FontWeight.normal,
+                                                                ),
+                                                                pauseOnBounce: const Duration(seconds: 2),
+                                                                delayBefore: const Duration(seconds: 2),
+                                                                pauseBetween: const Duration(seconds: 2),
+                                                              ),
+                                                            ),
+                                                            const Spacer(),
+                                                            Text(
+                                                                "??:??",
+                                                                style: TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: normalSize,
+                                                                )
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    )
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      );
 
-                                          },
-                                        );
-                                      }
-                                      else if(snapshot.hasError){
-                                        return Center(
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                FluentIcons.error_circle_24_regular,
-                                                size: height * 0.1,
-                                                color: Colors.red,
-                                              ),
-                                              Text(
-                                                "Error loading queue",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: smallSize,
-                                                ),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: (){
-                                                  setState(() {});
-                                                },
-                                                child: Text(
-                                                  "Retry",
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: smallSize,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }
-                                      else{
-                                        return const CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        );
-                                      }
                                     },
                                   ),
                                 ),
@@ -440,9 +498,10 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                   alignment: Alignment.center,
                                   //color: Colors.red,
                                   child: FutureBuilder(
-                                      future: widget.controller.getImage(currentSong.id),
-                                      builder: (context, snapshot) {
-                                        if(snapshot.hasData) {
+                                      future: WorkerController.getImage(currentSong.id),
+                                      builder: (context, snapshot2) {
+                                        if(snapshot2.hasData) {
+                                          apc.addSong(currentSong, snapshot2.data as Uint8List);
                                           return AspectRatio(
                                             aspectRatio: 1.0,
                                             child: Container(
@@ -452,7 +511,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                   borderRadius: minimizedVal ? null : BorderRadius.circular(width * 0.025),
                                                   image: DecorationImage(
                                                     fit: BoxFit.cover,
-                                                    image: Image.memory(snapshot.data as Uint8List).image,
+                                                    image: Image.memory(snapshot2.data as Uint8List).image,
                                                   )
                                               ),
                                             ),
@@ -472,19 +531,19 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                   //padding: EdgeInsets.all(width * 0.01),
                                   alignment: Alignment.center,
                                   child: FutureBuilder(
-                                      future: lyricFuture,
+                                      future: DataController.getLyrics(currentSong.data),
                                       builder: (context, snapshot){
                                         if(snapshot.hasData){
                                           String plainLyric = snapshot.data![0];
                                           var lyricModel = LyricsModelBuilder.create().bindLyricToMain(snapshot.data![1]).getModel();
                                           return MultiValueListenableBuilder(
-                                              valueListenables: [widget.controller.sliderNotifier, widget.controller.playingNotifier],
+                                              valueListenables: [SettingsController.sliderNotifier, SettingsController.playingNotifier],
                                               builder: (context, value, child){
                                                 return LyricsReader(
                                                   model: lyricModel,
                                                   position: value[0],
                                                   lyricUi: lyricUI,
-                                                  playing: widget.controller.playingNotifier.value,
+                                                  playing: SettingsController.playing,
                                                   size: Size.infinite,
                                                   padding: EdgeInsets.only(
                                                     right: width * 0.02,
@@ -493,7 +552,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                   selectLineBuilder: (progress, confirm) {
                                                     return Row(
                                                       children: [
-                                                        Icon(FluentIcons.play_12_filled, color: widget.controller.colorNotifier.value),
+                                                        Icon(FluentIcons.play, color: SettingsController.lightColorNotifier.value),
                                                         Expanded(
                                                           child: MouseRegion(
                                                             cursor: SystemMouseCursors.click,
@@ -501,7 +560,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                               onTap: () {
                                                                 confirm.call();
                                                                 setState(() {
-                                                                  widget.controller.audioPlayer.seek(Duration(milliseconds: progress));
+                                                                  AudioPlayerController.audioPlayer.seek(Duration(milliseconds: progress));
                                                                 });
                                                               },
                                                             ),
@@ -510,7 +569,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                         Text(
                                                           //progress.toString(),
                                                           "${progress ~/ 1000 ~/ 60}:${(progress ~/ 1000 % 60).toString().padLeft(2, '0')}",
-                                                          style: TextStyle(color: widget.controller.colorNotifier.value),
+                                                          style: TextStyle(color: SettingsController.lightColorNotifier.value),
                                                         )
                                                       ],
                                                     );
@@ -562,7 +621,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
                                                 Icon(
-                                                  FluentIcons.error_circle_24_regular,
+                                                  FluentIcons.error,
                                                   size: height * 0.1,
                                                   color: Colors.red,
                                                 ),
@@ -576,7 +635,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                                 ElevatedButton(
                                                   onPressed: (){
                                                     setState(() {
-                                                      lyricFuture = widget.controller.getLyrics(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
+                                                      // lyricFuture = widget.controller.getLyrics(widget.controller.controllerQueue[widget.controller.indexNotifier.value]);
                                                     });
                                                   },
                                                   child: Text(
@@ -616,7 +675,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                               crossAxisAlignment: minimizedVal ? CrossAxisAlignment.start : CrossAxisAlignment.center,
                               children: [
                                 TextScroll(
-                                  currentSong.title,
+                                  currentSong.title.toString(),
                                   mode: TextScrollMode.endless,
                                   velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
                                   style: TextStyle(
@@ -632,7 +691,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                   height: height * 0.001,
                                 ),
                                 TextScroll(
-                                  currentSong.artist ?? "Unknown artist",
+                                  currentSong.artist ?? "Unknown",
                                   mode: TextScrollMode.bouncing,
                                   pauseOnBounce: const Duration(seconds: 1),
                                   style: TextStyle(
@@ -650,29 +709,29 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                           if(!minimizedVal)
                           //ProgressBar
                             MultiValueListenableBuilder(
-                                valueListenables: [widget.controller.sliderNotifier, widget.controller.colorNotifier],
+                                valueListenables: [SettingsController.sliderNotifier, SettingsController.lightColorNotifier],
                                 builder: (context, values, child){
                                   return AnimatedContainer(
                                     duration: const Duration(milliseconds: 500),
                                     curve: Curves.easeInOut,
-                                    width: minimizedNotifier.value ? width * 0.775 : width * 0.85,
+                                    width: am.minimizedNotifier.value ? width * 0.775 : width * 0.85,
                                     padding: EdgeInsets.symmetric(
                                       horizontal: width * 0.01,
-                                      vertical: minimizedNotifier.value ? 0 : height * 0.03,
+                                      vertical: am.minimizedNotifier.value ? 0 : height * 0.03,
                                     ),
                                     child: FutureBuilder(
-                                      future: widget.controller.getDuration(currentSong),
+                                      future: DataController.getDuration(currentSong),
                                       builder: (context, snapshot){
                                         return ProgressBar(
                                           progress: Duration(milliseconds: values[0]),
-                                          total: snapshot.hasData ? snapshot.data as Duration : Duration.zero,
+                                          total: snapshot.hasData ? Duration(milliseconds: snapshot.data!.inSeconds) : Duration.zero,
                                           progressBarColor: values[1],
                                           baseBarColor: Colors.white.withOpacity(0.5),
                                           bufferedBarColor: Colors.white.withOpacity(0.5),
                                           thumbColor: Colors.white,
                                           barHeight: 4.0,
                                           thumbRadius: 7.0,
-                                          timeLabelLocation: minimizedNotifier.value ? TimeLabelLocation.sides : TimeLabelLocation.below,
+                                          timeLabelLocation: am.minimizedNotifier.value ? TimeLabelLocation.sides : TimeLabelLocation.below,
                                           timeLabelTextStyle: TextStyle(
                                             color: Colors.white,
                                             fontSize: height * 0.0175,
@@ -680,7 +739,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                             fontWeight: FontWeight.normal,
                                           ),
                                           onSeek: (duration) {
-                                            widget.controller.audioPlayer.seek(duration);
+                                            AudioPlayerController.audioPlayer.seek(duration);
                                           },
                                         );
                                       },
@@ -699,69 +758,81 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                               children: [
                                 if(!minimizedVal)
                                   ValueListenableBuilder(
-                                      valueListenable: widget.controller.shuffleNotifier,
+                                      valueListenable: SettingsController.shuffleNotifier,
                                       builder: (context, value, child){
                                         return IconButton(
                                             onPressed: () {
-                                              widget.controller.setShuffle();
+                                              SettingsController.shuffle = !SettingsController.shuffle;
                                             },
-                                            icon: value == false ?
-                                            Icon(FluentIcons.arrow_shuffle_off_16_filled, size: height * 0.024, color: Colors.white) :
-                                            Icon(FluentIcons.arrow_shuffle_16_filled, size: height * 0.024, color: Colors.white)
+                                            icon: Icon(
+                                                value == false ? FluentIcons.shuffleOff : FluentIcons.shuffleOn,
+                                                size: height * 0.025,
+                                                color: Colors.white,
+                                            ),
                                         );
                                       }
                                   ),
 
                                 IconButton(
                                   onPressed: () async {
-                                    await widget.controller.previousSong();
+                                    await audioHandler.skipToPrevious();
                                   },
                                   icon: Icon(
-                                    FluentIcons.previous_16_filled,
+                                    FluentIcons.previous,
                                     color: Colors.white,
                                     size: height * 0.022,
                                   ),
                                 ),
-                                if(snapshot.hasData)
-                                  MultiValueListenableBuilder(
-                                      valueListenables: [widget.controller.playingNotifier],
-                                      builder: (context, value, child){
-                                        return IconButton(
-                                          onPressed: () async {
-                                            //print("pressed pause play");
-                                            await widget.controller.playSong();
-                                          },
-                                          icon: widget.controller.playingNotifier.value ?
-                                          Icon(FluentIcons.pause_16_filled, color: Colors.white, size: height * 0.023,) :
-                                          Icon(FluentIcons.play_16_filled, color: Colors.white, size: height * 0.023,),
-                                        );
-                                      }
-                                  )
-                                else
-                                  const CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
+                                MultiValueListenableBuilder(
+                                    valueListenables: [SettingsController.playingNotifier],
+                                    builder: (context, value, child){
+                                      return IconButton(
+                                        onPressed: () async {
+                                          //print("pressed pause play");
+                                          if (SettingsController.playing) {
+                                            await audioHandler.pause();
+                                          } else {
+                                            await audioHandler.play();
+                                          }
+                                        },
+                                        icon: Icon(
+                                          SettingsController.playing ?
+                                          FluentIcons.pause :
+                                          FluentIcons.play,
+                                          color: Colors.white,
+                                          size: height * 0.025,
+                                        ),
+                                      );
+                                    }
+                                ),
                                 IconButton(
                                   onPressed: () async {
-                                    //print("next");
-                                    return await widget.controller.nextSong();
+                                    print("next");
+                                    return await audioHandler.skipToNext();
                                   },
-                                  icon: Icon(FluentIcons.next_16_filled, color: Colors.white, size: height * 0.022, ),
-                                ),
-                                if(!minimizedVal)
-                                  ValueListenableBuilder(
-                                      valueListenable: widget.controller.repeatNotifier,
-                                      builder: (context, value, child){
-                                        return IconButton(
-                                            onPressed: () {
-                                              widget.controller.setRepeat();
-                                            },
-                                            icon: value == false ?
-                                            Icon(FluentIcons.arrow_repeat_all_16_filled, size: height * 0.024, color: Colors.white) :
-                                            Icon(FluentIcons.arrow_repeat_1_16_filled, size: height * 0.024, color: Colors.white)
-                                        );
-                                      }
+                                  icon: Icon(
+                                    FluentIcons.next,
+                                    color: Colors.white,
+                                    size: height * 0.025,
                                   ),
+                                ),
+                                if (!minimizedVal)
+                                ValueListenableBuilder(
+                                    valueListenable: SettingsController.repeatNotifier,
+                                    builder: (context, value, child){
+                                      return IconButton(
+                                        onPressed: () {
+                                          SettingsController.repeat = !SettingsController.repeat;
+                                        },
+                                        icon:
+                                        Icon(
+                                            value == false ? FluentIcons.repeatOff: FluentIcons.repeatOn,
+                                            size: height * 0.025,
+                                            color: Colors.white,
+                                        ),
+                                      );
+                                    }
+                                ),
 
 
                               ],

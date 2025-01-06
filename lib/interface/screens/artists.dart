@@ -1,43 +1,38 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/screens/add_screen.dart';
-import 'package:musicplayerandroid/screens/image_widget.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import '../../controller/data_controller.dart';
+import '../../utils/fluenticons/fluenticons.dart';
+import 'artist_screen.dart';
 
-import '../controller/controller.dart';
-import 'album_screen.dart';
-
-class Tracks extends StatefulWidget{
-  final Controller controller;
-  const Tracks({super.key, required this.controller});
+class Artists extends StatefulWidget{
+  const Artists({super.key});
 
   @override
-  _TracksState createState() => _TracksState();
+  _ArtistsState createState() => _ArtistsState();
 }
 
 
-class _TracksState extends State<Tracks>{
+class _ArtistsState extends State<Artists>{
 
   FocusNode searchNode = FocusNode();
 
   Timer? _debounce;
 
-  late Future<List<SongModel>> songsFuture;
+  late Future<List<ArtistModel>> artistsFuture;
 
   @override
   void initState(){
     super.initState();
-    songsFuture = widget.controller.getSongs('');
+    artistsFuture = DataController.getArtists('');
   }
 
   _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
-        songsFuture = widget.controller.getSongs(query);
+        artistsFuture = DataController.getArtists(query);
       });
     });
   }
@@ -54,9 +49,9 @@ class _TracksState extends State<Tracks>{
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    // var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    // var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Column(
       children: [
         Container(
@@ -92,27 +87,26 @@ class _TracksState extends State<Tracks>{
                 color: Colors.white,
                 fontSize: smallSize,
               ),
-              labelText: 'Search', suffixIcon: Icon(FluentIcons.search_16_filled, color: Colors.white, size: height * 0.02,),
+              labelText: 'Search', suffixIcon: Icon(FluentIcons.search, color: Colors.white, size: height * 0.02,),
             ),
           ),
         ),
         Expanded(
           child: FutureBuilder(
-              future: songsFuture,
+              future: artistsFuture,
               builder: (context, snapshot){
                 if(snapshot.hasError){
-                  print(snapshot.error);
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          FluentIcons.error_circle_24_regular,
+                          FluentIcons.error,
                           size: height * 0.1,
                           color: Colors.red,
                         ),
                         Text(
-                          "Error loading songs",
+                          "Error loading artists",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: smallSize,
@@ -137,7 +131,7 @@ class _TracksState extends State<Tracks>{
                 else if(snapshot.hasData){
                   if (snapshot.data!.isEmpty){
                     return Center(
-                      child: Text("No songs found", style: TextStyle(color: Colors.white, fontSize: smallSize),),
+                      child: Text("No artists found.", style: TextStyle(color: Colors.white, fontSize: smallSize),),
                     );
                   }
                   return GridView.builder(
@@ -155,58 +149,69 @@ class _TracksState extends State<Tracks>{
                       //mainAxisSpacing: width * 0.0125,
                     ),
                     itemBuilder: (BuildContext context, int index) {
-                      SongModel song = snapshot.data![index];
+                      ArtistModel artist = snapshot.data![index];
                       return MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
-                          onTap: () async {
-                            //print("Playing ${widget.controller.indexNotifier.value}");
-                            if (widget.controller.controllerQueue[widget.controller.indexNotifier.value] != song.data) {
-                              //print("path match");
-                              var songPaths = snapshot.data!.map((e) => e.data).toList();
-                              if(widget.controller.settings.queue.equals(songPaths) == false){
-                                print("Updating playing songs");
-                                widget.controller.updatePlaying(songPaths, index);
-                              }
-                              widget.controller.indexChange(song.data);
-                            }
-                            await widget.controller.playSong();
+                          onTap: () {
+                            //print(artist.name);
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => ArtistScreen(artist: artist)));
                           },
                           child: Column(
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(width * 0.01),
-                                child: ImageWidget(
-                                  controller: widget.controller,
-                                  id: song.id,
+                                child: Hero(
+                                  tag: artist.artist,
+                                  child: FutureBuilder(
+                                    future: DataController.audioQuery.queryArtwork(artist.id, ArtworkType.ARTIST),
+                                    builder: (context, snapshot){
+                                      return AspectRatio(
+                                        aspectRatio: 1.0,
+                                        child: snapshot.hasData?
+                                        Container(
+                                          decoration: BoxDecoration(
+                                              color: Colors.black,
+                                              image: DecorationImage(
+                                                fit: BoxFit.cover,
+                                                image: Image.memory(snapshot.data!).image,
+                                              )
+                                          ),
+                                        ):
+                                        Container(
+                                          decoration: BoxDecoration(
+                                              color: Colors.black,
+                                              image: DecorationImage(
+                                                fit: BoxFit.cover,
+                                                image: Image.asset("assets/bg.png").image,
+                                              )
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
                               SizedBox(
-                                height: height * 0.005,
+                                height: width * 0.005,
                               ),
-                              ValueListenableBuilder(
-                                  valueListenable: widget.controller.indexNotifier,
-                                  builder: (context, value, child){
-                                    return Text(
-                                      song.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        height: 1,
-                                        color: widget.controller.controllerQueue.isNotEmpty && widget.controller.controllerQueue[widget.controller.indexNotifier.value] == song.id ? Colors.blue : Colors.white,
-                                        fontSize: smallSize,
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                    );
-                                  }
+                              Text(
+                                artist.artist,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  height: 1,
+                                  color: Colors.white,
+                                  fontSize: smallSize,
+                                  fontWeight: FontWeight.normal,
+                                ),
                               ),
                             ],
                           ),
                         ),
 
                       );
-
                     },
                   );
                 }
@@ -222,6 +227,7 @@ class _TracksState extends State<Tracks>{
         ),
       ],
     );
-  }
 
+
+  }
 }

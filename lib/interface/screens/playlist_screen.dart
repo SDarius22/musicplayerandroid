@@ -1,18 +1,18 @@
 import 'package:collection/collection.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/utils/hover_widget/hover_container.dart';
 import 'package:musicplayerandroid/domain/playlist_type.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../controller/controller.dart';
-import '../utils/objectbox.g.dart';
+import '../../controller/data_controller.dart';
+import '../../controller/settings_controller.dart';
+import '../../main.dart';
+import '../../utils/fluenticons/fluenticons.dart';
 import 'add_screen.dart';
-import 'image_widget.dart';
+import '../widgets/image_widget.dart';
 
 class PlaylistScreen extends StatefulWidget {
-  final Controller controller;
   final PlaylistType playlist;
-  const PlaylistScreen({super.key, required this.controller, required this.playlist});
+  const PlaylistScreen({super.key, required this.playlist});
 
   @override
   _PlaylistScreenState createState() => _PlaylistScreenState();
@@ -58,11 +58,12 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dc = DataController();
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Scaffold(
       body: Container(
         width: width,
@@ -84,7 +85,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                 Navigator.pop(context);
               },
               icon: Icon(
-                FluentIcons.arrow_left_16_filled,
+                FluentIcons.back,
                 size: height * 0.02,
                 color: Colors.white,
               ),
@@ -116,7 +117,6 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(width * 0.025),
                                 child: ImageWidget(
-                                  controller: widget.controller,
                                   id: songs.value.first.id,
                                 ),
                               ),
@@ -216,15 +216,14 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                         children: [
                           IconButton(
                             onPressed: () async {
-                              if(widget.controller.settings.queue.equals(widget.playlist.songs) == false){
-                                widget.controller.updatePlaying(widget.playlist.songs, 0);
+                              if(SettingsController.queue.equals(widget.playlist.paths) == false){
+                                dc.updatePlaying(widget.playlist.paths, 0);
                               }
-                              widget.controller.indexChange(widget.playlist.songs.first);
-                              await widget.controller.playSong();
-
+                              SettingsController.index = SettingsController.currentQueue.indexOf(widget.playlist.paths.first);
+                              await audioHandler.play();
                             },
                             icon: Icon(
-                              FluentIcons.play_12_filled,
+                              FluentIcons.play,
                               color: Colors.white,
                               size: height * 0.025,
                             ),
@@ -236,12 +235,12 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => AddScreen(controller: widget.controller, songs: songs.value)
+                                      builder: (context) => AddScreen(songs: songs.value)
                                   )
                               );
                             },
                             icon: Icon(
-                              FluentIcons.add_12_filled,
+                              FluentIcons.add,
                               color: Colors.white,
                               size: height * 0.025,
                             ),
@@ -249,11 +248,11 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                           IconButton(
                             onPressed: () {
                               print("Delete ${widget.playlist.name}");
-                              widget.controller.deletePlaylist(widget.playlist);
+                              dc.deletePlaylist(widget.playlist);
                               Navigator.pop(context);
                             },
                             icon: Icon(
-                              FluentIcons.delete_12_filled,
+                              FluentIcons.trash,
                               color: Colors.white,
                               size: height * 0.025,
                             ),
@@ -298,11 +297,11 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                             child: GestureDetector(
                               behavior: HitTestBehavior.translucent,
                               onTap: () async {
-                                if(widget.controller.settings.queue.equals(widget.playlist.songs) == false){
-                                  widget.controller.updatePlaying(widget.playlist.songs, index);
+                                if(SettingsController.queue.equals(widget.playlist.paths) == false){
+                                  dc.updatePlaying(widget.playlist.paths, index);
                                 }
-                                widget.controller.indexChange(widget.controller.settings.queue[index]);
-                                await widget.controller.playSong();
+                                SettingsController.index = SettingsController.currentQueue.indexOf(widget.playlist.paths[index]);
+                                await audioHandler.play();
                               },
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(width * 0.01),
@@ -321,7 +320,6 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(width * 0.01),
                                         child: ImageWidget(
-                                          controller: widget.controller,
                                           id: song.id,
                                         ),
                                       ),
@@ -400,16 +398,15 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                       ClipRRect(
                                           borderRadius: BorderRadius.circular(width * 0.01),
                                           child: ImageWidget(
-                                            controller: widget.controller,
                                             id: song.id,
                                             buttons: IconButton(
                                               onPressed: (){
                                                 songs.value.removeAt(index);
                                                 songs.value = List.from(songs.value);
-                                                widget.playlist.songs.removeAt(index);
+                                                widget.playlist.paths.removeAt(index);
                                               },
                                               icon: Icon(
-                                                FluentIcons.delete_12_filled,
+                                                FluentIcons.trash,
                                                 color: Colors.white,
                                                 size: height * 0.02,
                                               ),
@@ -455,16 +452,16 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                 ),
                               );
                             },
-                            itemCount: widget.playlist.songs.length,
+                            itemCount: widget.playlist.paths.length,
                             onReorder: (int oldIndex, int newIndex) {
                               if (oldIndex < newIndex) {
                                 newIndex -= 1;
                               }
-                              var temp = widget.playlist.songs.removeAt(oldIndex);
-                              widget.playlist.songs.insert(newIndex, temp);
+                              var temp = widget.playlist.paths.removeAt(oldIndex);
+                              widget.playlist.paths.insert(newIndex, temp);
                               var temp2 =  songs.value.removeAt(oldIndex);
                               songs.value.insert(newIndex, temp2);
-                              //widget.controller.playlistBox.put(widget.playlist);
+                              DataController.playlistBox.put(widget.playlist);
                             },
                           );
                         }
@@ -485,11 +482,11 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                       }
                       else{
                         editMode.value = false;
-                        widget.controller.playlistBox.put(widget.playlist);
+                        DataController.playlistBox.put(widget.playlist);
                       }
                     },
                     icon: Icon(
-                      value ? FluentIcons.checkmark_12_filled : FluentIcons.edit_12_filled,
+                      value ? FluentIcons.editOff : FluentIcons.editOn,
                       size: height * 0.02,
                       color: Colors.white,
                     ),

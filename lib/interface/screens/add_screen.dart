@@ -1,17 +1,15 @@
 import 'dart:ui';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/screens/image_widget.dart';
 import 'package:musicplayerandroid/utils/hover_widget/stack_hover_widget.dart';
-import 'package:musicplayerandroid/utils/objectbox.g.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../domain/playlist_type.dart';
-import '../controller/controller.dart';
+import '../../controller/data_controller.dart';
+import '../../domain/playlist_type.dart';
+import '../../repository/objectbox.g.dart';
+import '../../utils/fluenticons/fluenticons.dart';
 
 class AddScreen extends StatefulWidget {
-  final Controller controller;
   final List<SongModel> songs;
-  const AddScreen({super.key, required this.controller, required this.songs});
+  const AddScreen({super.key, required this.songs});
 
   @override
   _AddScreenState createState() => _AddScreenState();
@@ -21,13 +19,14 @@ class _AddScreenState extends State<AddScreen> {
   List<int> selected = [];
   @override
   Widget build(BuildContext context) {
+    final dc = DataController();
     //print(widget.songs.length);
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    //var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
-    var query = widget.controller.playlistBox.query().order(PlaylistType_.name).build();
+    // var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
+    var query = DataController.playlistBox.query().order(PlaylistType_.name).build();
     return Scaffold(
       body: Container(
         width: width,
@@ -52,7 +51,7 @@ class _AddScreenState extends State<AddScreen> {
                     Navigator.pop(context);
                   },
                   icon: Icon(
-                    FluentIcons.arrow_left_16_filled,
+                    FluentIcons.back,
                     size: height * 0.02,
                     color: Colors.white,
                   ),
@@ -70,14 +69,14 @@ class _AddScreenState extends State<AddScreen> {
                     onPressed: (){
                       //print("Add to new playlist");
                       for(int i = 0; i < selected.length; i++){
-                        if(i == 0){
+                        if(selected[i] == 0){
                           List<String> paths = widget.songs.map((e) => e.data).toList();
                           //print(paths);
-                          widget.controller.addToQueue(paths);
+                          dc.addToQueue(paths);
                         }
                         else{
-                          var playlist = query.find()[i-1];
-                          widget.controller.addToPlaylist(playlist, widget.songs);
+                          var playlist = query.find()[i];
+                          dc.addToPlaylist(playlist, widget.songs);
                         }
                       }
                       Navigator.pop(context);
@@ -165,7 +164,7 @@ class _AddScreenState extends State<AddScreen> {
                                     child: Container(
                                       alignment: Alignment.center,
                                       child: Icon(
-                                        FluentIcons.checkmark_16_filled,
+                                        FluentIcons.check,
                                         size: height * 0.1,
                                         color: Colors.white,
                                       ),

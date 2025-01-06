@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/controller/data_controller.dart';
+import 'package:musicplayerandroid/controller/worker_controller.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../controller/controller.dart';
+import '../../utils/fluenticons/fluenticons.dart';
 import 'album_screen.dart';
 
 
 class Albums extends StatefulWidget{
-  final Controller controller;
-  const Albums({super.key, required this.controller});
+  const Albums({super.key});
 
   @override
   _AlbumsState createState() => _AlbumsState();
@@ -27,14 +27,14 @@ class _AlbumsState extends State<Albums>{
   @override
   void initState(){
     super.initState();
-    albumsFuture = widget.controller.getAlbums('');
+    albumsFuture = DataController.getAlbums('');
   }
 
   _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
-        albumsFuture = widget.controller.getAlbums(query);
+        albumsFuture = DataController.getAlbums(query);
       });
     });
   }
@@ -50,9 +50,9 @@ class _AlbumsState extends State<Albums>{
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    // var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    // var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Column(
       children: [
         Container(
@@ -88,7 +88,7 @@ class _AlbumsState extends State<Albums>{
                 color: Colors.white,
                 fontSize: smallSize,
               ),
-              labelText: 'Search', suffixIcon: Icon(FluentIcons.search_16_filled, color: Colors.white, size: height * 0.02,),
+              labelText: 'Search', suffixIcon: Icon(FluentIcons.search, color: Colors.white, size: height * 0.02,),
             ),
           ),
         ),
@@ -102,7 +102,7 @@ class _AlbumsState extends State<Albums>{
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          FluentIcons.error_circle_24_regular,
+                          FluentIcons.error,
                           size: height * 0.1,
                           color: Colors.red,
                         ),
@@ -157,7 +157,7 @@ class _AlbumsState extends State<Albums>{
                           onTap: () {
                             Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => AlbumScreen(controller: widget.controller, album: album))
+                                MaterialPageRoute(builder: (context) => AlbumScreen(album: album))
                             );
                           },
                           child: Column(
@@ -167,7 +167,7 @@ class _AlbumsState extends State<Albums>{
                                 child: Hero(
                                   tag: album.album,
                                   child: FutureBuilder(
-                                    future: widget.controller.audioQuery.queryArtwork(album.id, ArtworkType.ALBUM),
+                                    future: WorkerController.audioQuery.queryArtwork(album.id, ArtworkType.ALBUM),
                                     builder: (context, snapshot){
                                       return AspectRatio(
                                         aspectRatio: 1.0,

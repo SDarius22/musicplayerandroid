@@ -6,5 +6,5 @@ class PlaylistType{
   int id = 0;
   String name = "Unknown playlist";
   String nextAdded = "last";
-  List<String> songs = [];
+  List<String> paths = [];
 }

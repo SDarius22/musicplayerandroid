@@ -1,14 +1,16 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/controller/data_controller.dart';
+import 'package:musicplayerandroid/controller/worker_controller.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../controller/controller.dart';
+import '../../controller/settings_controller.dart';
+import '../../main.dart';
 import 'add_screen.dart';
-import 'image_widget.dart';
+import '../widgets/image_widget.dart';
 
 class ArtistScreen extends StatefulWidget {
-  final Controller controller;
   final ArtistModel artist;
-  const ArtistScreen({super.key, required this.controller, required this.artist});
+  const ArtistScreen({super.key, required this.artist});
 
   @override
   _ArtistScreenState createState() => _ArtistScreenState();
@@ -21,11 +23,12 @@ class _ArtistScreenState extends State<ArtistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dc = DataController();
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
-    var boldSize = height * 0.015;
-    var normalSize = height * 0.0125;
-    var smallSize = height * 0.01;
+    var boldSize = height * 0.0175;
+    var normalSize = height * 0.015;
+    var smallSize = height * 0.0125;
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -38,7 +41,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
               print("Add ${widget.artist.artist}");
               Navigator.push(context,
                   MaterialPageRoute(
-                      builder: (context) => AddScreen(controller: widget.controller, songs: songs)
+                      builder: (context) => AddScreen(songs: songs)
                   )
               );
             },
@@ -56,7 +59,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
         ),
         alignment: Alignment.center,
         child: FutureBuilder(
-          future: widget.controller.audioQuery.queryAudiosFrom(
+          future: WorkerController.audioQuery.queryAudiosFrom(
             AudiosFromType.ARTIST_ID,
             widget.artist.id,
           ),
@@ -100,7 +103,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
                           child: ClipRRect(
                               borderRadius: BorderRadius.circular(width * 0.025),
                               child: FutureBuilder(
-                                future: widget.controller.audioQuery.queryArtwork(widget.artist.id, ArtworkType.ARTIST, size: 512),
+                                future: WorkerController.audioQuery.queryArtwork(widget.artist.id, ArtworkType.ARTIST, size: 512),
                                 builder: (context, snapshot){
                                   return AspectRatio(
                                     aspectRatio: 1.0,
@@ -199,11 +202,11 @@ class _ArtistScreenState extends State<ArtistScreen> {
                               behavior: HitTestBehavior.translucent,
                               onTap: () async {
                                 var songPaths = songs.map((e) => e.data).toList();
-                                if(widget.controller.settings.queue.equals(songPaths) == false){
-                                  widget.controller.updatePlaying(songPaths, index);
+                                if(SettingsController.queue.equals(songPaths) == false){
+                                  dc.updatePlaying(songPaths, index);
                                 }
-                                widget.controller.indexChange(widget.controller.settings.queue[index]);
-                                await widget.controller.playSong();
+                                SettingsController.index = SettingsController.currentQueue.indexOf(songs[index].data);
+                                await audioHandler.play();
                                 // widget.album.name.substring(0, widget.album.name.length > 60 ? 60 : widget.album.name.length);
                               },
                               child: ClipRRect(
@@ -222,7 +225,6 @@ class _ArtistScreenState extends State<ArtistScreen> {
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(height * 0.02),
                                         child: ImageWidget(
-                                          controller: widget.controller,
                                           id: song.id,
                                         ),
                                       ),
