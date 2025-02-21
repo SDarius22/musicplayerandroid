@@ -1,49 +1,75 @@
 import 'dart:async';
-
-import 'package:audio_service/audio_service.dart';
-
 import 'package:flutter/material.dart';
-
-import 'interface/screens/main_screen.dart';
-
+import 'package:flutter/services.dart';
+import 'package:musicplayerandroid/interface/screens/main_screen.dart';
+import 'package:musicplayerandroid/providers/app_audio_handler.dart';
+import 'package:musicplayerandroid/providers/audio_provider.dart';
+import 'package:musicplayerandroid/providers/auth_provider.dart';
+import 'package:musicplayerandroid/providers/local_data_provider.dart';
+import 'package:musicplayerandroid/providers/settings_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:bot_toast/bot_toast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-late AudioHandler audioHandler;
+import 'database/objectBox.dart';
+import 'interface/screens/loading_screen.dart';
+
 
 Future<void> main(List<String> args) async {
-  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDependencies();
+  runApp(
+    const MusicApp(),
+  );
+}
 
+class MusicApp extends StatelessWidget {
+  const MusicApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<SettingsProvider>(
+          create: (_) => SettingsProvider()..init(),
+        ),
+        Provider<LocalDataProvider>(
+          create: (_) => LocalDataProvider(),
+        ),
+        ChangeNotifierProvider<AudioProvider>(
+          create: (_) => AudioProvider()
+            ..initialize(),
+        ),
+        // ChangeNotifierProvider<AuthProvider>(
+        //   create: (_) => AuthProvider(),
+        // ),
+      ],
+      child: MaterialApp(
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF0E0E0E),
+        ),
+        builder: BotToastInit(),
+        debugShowCheckedModeBanner: false,
+        home: const MyApp(),
+      ),
+    );
+  }
+}
+
+
+
+Future<void> initializeDependencies() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await [
     Permission.mediaLibrary,
     Permission.audio,
     Permission.storage,
   ].request();
-
-  // final docsDir = await getApplicationDocumentsDirectory();
-  // File logFile = File(kDebugMode ? '${docsDir.path}/musicplayer-debug ${Platform.operatingSystem}/log.txt' : '${docsDir.path}/musicplayer ${Platform.operatingSystem}/log.txt');
-  // FlutterError.onError = (FlutterErrorDetails details) {
-  //   FlutterError.dumpErrorToConsole(details, forceReport: true);
-  //   try{
-  //     logFile.writeAsStringSync('${DateTime.now()}: ${details.toString()}\n', mode: FileMode.append);
-  //   } catch (e) {
-  //     logFile.createSync(recursive: true);
-  //     logFile.writeAsStringSync('${DateTime.now()}: ${details.toString()}\n', mode: FileMode.append);
-  //   }
-  // };
-
-  runApp(
-    MaterialApp(
-      theme: ThemeData(
-        fontFamily: 'Bahnschrift',
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0E0E0E),
-      ),
-      debugShowCheckedModeBanner: false,
-      //showPerformanceOverlay: true,
-      home: const MyApp(),
-    ),
-  );
+  await ObjectBox.initialize();
+  await AppAudioHandler().init();
 }
-
-
 

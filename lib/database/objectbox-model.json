@@ -1,0 +1,210 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:6475817503884992334",
+      "lastPropertyId": "12:8172387153617920685",
+      "name": "AudioInfoEntity",
+      "properties": [
+        {
+          "id": "1:8024752574304966094",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1321722112705283482",
+          "name": "index",
+          "type": 6
+        },
+        {
+          "id": "3:6572891975965212105",
+          "name": "slider",
+          "type": 6
+        },
+        {
+          "id": "4:4930347703317401781",
+          "name": "playing",
+          "type": 1
+        },
+        {
+          "id": "5:3636257167648916869",
+          "name": "repeat",
+          "type": 1
+        },
+        {
+          "id": "6:4732428092451459897",
+          "name": "shuffle",
+          "type": 1
+        },
+        {
+          "id": "7:8237125804775246284",
+          "name": "balance",
+          "type": 8
+        },
+        {
+          "id": "8:1635939563884530019",
+          "name": "speed",
+          "type": 8
+        },
+        {
+          "id": "9:5441477261385327028",
+          "name": "volume",
+          "type": 8
+        },
+        {
+          "id": "10:4555833233631978316",
+          "name": "sleepTimer",
+          "type": 6
+        },
+        {
+          "id": "11:6945848897626077896",
+          "name": "unshuffledQueue",
+          "type": 30
+        },
+        {
+          "id": "12:8172387153617920685",
+          "name": "shuffledQueue",
+          "type": 30
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:8346723063786815593",
+      "lastPropertyId": "12:7953600668163766535",
+      "name": "SettingsEntity",
+      "properties": [
+        {
+          "id": "1:367144236346629282",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1746535356425136073",
+          "name": "mongoID",
+          "type": 9
+        },
+        {
+          "id": "3:4806434561410171765",
+          "name": "email",
+          "type": 9
+        },
+        {
+          "id": "4:6162678982508880446",
+          "name": "password",
+          "type": 9
+        },
+        {
+          "id": "5:9005461726508595937",
+          "name": "deviceList",
+          "type": 30
+        },
+        {
+          "id": "6:4872954874166789171",
+          "name": "primaryDevice",
+          "type": 9
+        },
+        {
+          "id": "7:3005153802014822360",
+          "name": "missingSongs",
+          "type": 30
+        },
+        {
+          "id": "8:4769189093889613144",
+          "name": "deezerARL",
+          "type": 9
+        },
+        {
+          "id": "9:3939145697263571899",
+          "name": "firstTime",
+          "type": 1
+        },
+        {
+          "id": "10:6034367794116484669",
+          "name": "appNotifications",
+          "type": 1
+        },
+        {
+          "id": "11:6806715642847333550",
+          "name": "queueAdd",
+          "type": 9
+        },
+        {
+          "id": "12:7953600668163766535",
+          "name": "queuePlay",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:2810442586152317323",
+      "lastPropertyId": "7:2422582797900601477",
+      "name": "PlaylistEntity",
+      "properties": [
+        {
+          "id": "1:7998403278185998845",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8883917865529417898",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:7680448273446002483",
+          "name": "nextAdded",
+          "type": 9
+        },
+        {
+          "id": "4:5804201527903265665",
+          "name": "paths",
+          "type": 30
+        },
+        {
+          "id": "5:4747557842830407309",
+          "name": "indestructible",
+          "type": 1
+        },
+        {
+          "id": "6:4226624031330163625",
+          "name": "duration",
+          "type": 6
+        },
+        {
+          "id": "7:2422582797900601477",
+          "name": "artistCount",
+          "type": 30
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "4:2810442586152317323",
+  "lastIndexId": "0:0",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [
+    6426190992824815165
+  ],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [
+    3168607470222552944,
+    7137180191704235,
+    5927443724938116562,
+    4373692054529818470,
+    5223673534744241007,
+    4273272341667789738,
+    4090369904269081461
+  ],
+  "retiredRelationUids": [],
+  "version": 1
+}

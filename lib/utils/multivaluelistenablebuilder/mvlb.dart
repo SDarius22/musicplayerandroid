@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart' show Listenable, ValueListenable;
-import 'package:flutter/material.dart'
-    show AnimatedBuilder, BuildContext, StatelessWidget, Widget;
+import 'package:flutter/material.dart' show AnimatedBuilder, BuildContext, StatelessWidget, Widget;
 
 class MultiValueListenableBuilder extends StatelessWidget {
   final List<ValueListenable> valueListenables;
