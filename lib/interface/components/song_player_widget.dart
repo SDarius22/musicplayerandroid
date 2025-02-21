@@ -50,6 +50,13 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     localDataProvider = Provider.of<LocalDataProvider>(context, listen: false);
     var width = MediaQuery.of(context).size.width;
@@ -196,14 +203,14 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                           radius: const Radius.circular(10.0),
                           child: ListView.builder(
                             controller: itemScrollController,
-                            itemCount: audioProvider.unshuffledQueue.length,
+                            itemCount: audioProvider.currentAudioInfo.unshuffledQueue.length,
                             itemExtent: height * 0.1,
                             padding: EdgeInsets.only(
                                 right: width * 0.05
                             ),
                             itemBuilder: (context, int index) {
                               return FutureBuilder(
-                                future: localDataProvider.getSong(audioProvider.unshuffledQueue[index]),
+                                future: localDataProvider.getSong(audioProvider.currentAudioInfo.unshuffledQueue[index]),
                                 builder: (context, snapshot){
                                   if(snapshot.hasData){
                                     var song = snapshot.data as SongModel;
@@ -218,7 +225,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                             onTap: () async {
                                               //print(widget.controller.settings.playingSongsUnShuffled[index].title);
                                               //widget.controller.audioPlayer.stop();
-                                              audioProvider.index = audioProvider.currentQueue.indexOf(audioProvider.unshuffledQueue[index]);
+                                              audioProvider.index = audioProvider.currentQueue.indexOf(audioProvider.currentAudioInfo.unshuffledQueue[index]);
                                               await audioProvider.play();
                                             },
                                             child: ClipRRect(
@@ -297,7 +304,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                             onTap: () async {
                                               //print(widget.controller.settings.playingSongsUnShuffled[index].title);
                                               //widget.controller.audioPlayer.stop();
-                                              audioProvider.index = audioProvider.currentQueue.indexOf(audioProvider.unshuffledQueue[index]);
+                                              audioProvider.index = audioProvider.currentQueue.indexOf(audioProvider.currentAudioInfo.unshuffledQueue[index]);
                                               await audioProvider.play();
                                             },
                                             child: ClipRRect(
@@ -392,7 +399,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                 var lyricModel = LyricsModelBuilder.create().bindLyricToMain(snapshot.data![1]).getModel();
                                 return LyricsReader(
                                   model: lyricModel,
-                                  position: audioProvider.slider,
+                                  position: audioProvider.currentAudioInfo.slider,
                                   lyricUi: UINetease(
                                       defaultSize : 20,
                                       defaultExtSize : 20,
@@ -405,7 +412,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                                       lyricBaseLine : LyricBaseLine.CENTER,
                                       highlight : false
                                   ),
-                                  playing: audioProvider.playing,
+                                  playing: audioProvider.currentAudioInfo.playing,
                                   size: Size.infinite,
                                   padding: EdgeInsets.only(
                                     right: width * 0.02,
@@ -580,7 +587,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                       future: audioProvider.getCurrentSongDuration(),
                       builder: (context, snapshot){
                         return ProgressBar(
-                          progress: Duration(milliseconds: audioProvider.slider),
+                          progress: Duration(milliseconds: audioProvider.currentAudioInfo.slider),
                           total: snapshot.hasData ? Duration(milliseconds: snapshot.data!.inMilliseconds) : Duration.zero,
                           progressBarColor: audioProvider.lightColor,
                           baseBarColor: Colors.white.withOpacity(0.5),
@@ -636,14 +643,14 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                       IconButton(
                         onPressed: () async {
                           //print("pressed pause play");
-                          if (audioProvider.playing) {
+                          if (audioProvider.currentAudioInfo.playing) {
                             await audioProvider.pause();
                           } else {
                             await audioProvider.play();
                           }
                         },
                         icon: Icon(
-                          audioProvider.playing ?
+                          audioProvider.currentAudioInfo.playing ?
                           FluentIcons.pause :
                           FluentIcons.play,
                           color: Colors.white,

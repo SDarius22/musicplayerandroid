@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:musicplayerandroid/interface/screens/main_screen.dart';
-import 'package:musicplayerandroid/providers/app_audio_handler.dart';
+import 'package:musicplayerandroid/providers/notification_provider.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/auth_provider.dart';
+import 'package:musicplayerandroid/providers/database_provider.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
 import 'package:musicplayerandroid/providers/settings_provider.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +14,6 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'database/objectBox.dart';
-import 'interface/screens/loading_screen.dart';
 
 
 Future<void> main(List<String> args) async {
@@ -33,15 +34,17 @@ class MusicApp extends StatelessWidget {
     ]);
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<SettingsProvider>(
-          create: (_) => SettingsProvider()..init(),
+        Provider<DatabaseProvider>(
+          create: (_) => DatabaseProvider(),
         ),
-        Provider<LocalDataProvider>(
+        ChangeNotifierProvider<LocalDataProvider>(
           create: (_) => LocalDataProvider(),
         ),
+        ChangeNotifierProvider<SettingsProvider>(
+          create: (_) => SettingsProvider(),
+        ),
         ChangeNotifierProvider<AudioProvider>(
-          create: (_) => AudioProvider()
-            ..initialize(),
+          create: (_) => AudioProvider(),
         ),
         // ChangeNotifierProvider<AuthProvider>(
         //   create: (_) => AuthProvider(),
@@ -64,12 +67,13 @@ class MusicApp extends StatelessWidget {
 
 Future<void> initializeDependencies() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ObjectBox.initialize();
   await [
     Permission.mediaLibrary,
     Permission.audio,
     Permission.storage,
   ].request();
-  await ObjectBox.initialize();
-  await AppAudioHandler().init();
+
+  await NotificationProvider().init();
 }
 

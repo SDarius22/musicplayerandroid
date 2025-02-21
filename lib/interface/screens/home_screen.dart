@@ -8,11 +8,11 @@
 // import '../../utils/fluenticons/fluenticons.dart';
 // import '../widgets/song_player_widget.dart';
 // import 'add_screen.dart';
-// import 'albums.dart';
-// import 'artists.dart';
-// import 'download.dart';
-// import 'tracks.dart';
-// import 'playlists.dart';
+// import 'albums_screen.dart';
+// import 'artists_screen.dart';
+// import 'download_screen.dart';
+// import 'tracks_screen.dart';
+// import 'playlists_screen.dart';
 //
 //
 // class HomeScreen extends StatefulWidget {

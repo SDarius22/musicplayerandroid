@@ -2,13 +2,13 @@ import 'package:audio_service/audio_service.dart';
 
 import 'audio_provider.dart';
 
-class AppAudioHandler{
+class NotificationProvider{
   late AudioHandler audioHandler;
 
-  static final AppAudioHandler _instance = AppAudioHandler._internal();
-  factory AppAudioHandler() => _instance;
+  static final NotificationProvider _instance = NotificationProvider._internal();
+  factory NotificationProvider() => _instance;
 
-  AppAudioHandler._internal();
+  NotificationProvider._internal();
 
   Future<void> init () async {
     audioHandler = await AudioService.init(

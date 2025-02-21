@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/interface/screens/artists_screen.dart';
 import 'package:musicplayerandroid/interface/screens/loading_screen.dart';
-import 'package:musicplayerandroid/interface/screens/tracks.dart';
+import 'package:musicplayerandroid/interface/screens/playlists_screen.dart';
+import 'package:musicplayerandroid/interface/screens/tracks_screen.dart';
 import 'package:musicplayerandroid/providers/settings_provider.dart';
 import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:provider/provider.dart';
 import '../components/song_player_widget.dart';
+import 'albums_screen.dart';
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  @override
-  _MyAppState createState() => _MyAppState();
-}
 
-class _MyAppState extends State<MyApp>{
   @override
   Widget build(BuildContext context) {
     return Consumer<SettingsProvider>(
@@ -53,7 +52,29 @@ class _MyAppState extends State<MyApp>{
                 ListTile(
                   title: const Text('Tracks'),
                   onTap: () {
+                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
                     settings.navigatorKey.currentState!.push(Tracks.route());
+                  },
+                ),
+                ListTile(
+                  title: const Text('Albums'),
+                  onTap: () {
+                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
+                    settings.navigatorKey.currentState!.push(Albums.route());
+                  },
+                ),
+                ListTile(
+                  title: const Text('Artists'),
+                  onTap: () {
+                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
+                    settings.navigatorKey.currentState!.push(Artists.route());
+                  },
+                ),
+                ListTile(
+                  title: const Text('Playlists'),
+                  onTap: () {
+                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
+                    settings.navigatorKey.currentState!.push(Playlists.route());
                   },
                 ),
               ],
@@ -63,6 +84,5 @@ class _MyAppState extends State<MyApp>{
         );
       },
     );
-
   }
 }

@@ -1,24 +1,21 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/entities/playlist_entity.dart';
+import 'package:musicplayerandroid/providers/database_provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../entities//playlist_entity.dart';
-import '../database/objectBox.dart';
-import '../database/objectbox.g.dart';
+
 import '../utils/dominant_color/dominant_color.dart';
 
-class LocalDataProvider {
+class LocalDataProvider with ChangeNotifier {
   OnAudioQuery audioQuery = OnAudioQuery();
+  final DatabaseProvider database = DatabaseProvider();
   
   static final LocalDataProvider _instance = LocalDataProvider._internal();
   factory LocalDataProvider() => _instance;
   LocalDataProvider._internal();
-
-  get playlistBox => ObjectBox.store.box<PlaylistEntity>();
-
-  List<String> selectedPaths = [];
 
   Future<List<AlbumModel>> getAlbums(String searchValue, [int? limit]) async {
     if (limit != null) {
@@ -59,30 +56,10 @@ class LocalDataProvider {
     }
   }
 
-  Future<List<PlaylistEntity>> getPlaylists(String searchValue) async {
-    return playlistBox
-        .query(PlaylistEntity_.name.contains(searchValue, caseSensitive: false))
-        .order(PlaylistEntity_.name)
-        .build()
-        .find();
+  Future<List<PlaylistEntity>> getPlaylists(String searchValue, [int? limit]) async {
+    return database.queryPlaylists(searchValue, limit);
   }
 
-  // Future<List<SongModel>> getQueue() async {
-  //   List<SongModel> metadataQueue = [];
-  //   for (String path in SettingsProvider.queue) {
-  //     // var song = songBox.query(SongType_.path.equals(path)).build().findFirst();
-  //     path = path.split('/').last;
-  //     //print(path);
-  //     var songs = await audioQuery.queryWithFilters(
-  //       path, WithFiltersType.AUDIOS,
-  //       args: AudiosArgs.DISPLAY_NAME,
-  //     );
-  //     // print(songs);
-  //     var song = SongModel(songs[0]);
-  //     metadataQueue.add(song);
-  //   }
-  //   return metadataQueue;
-  // }
 
   Future<SongModel> getSong(String path) async {
     path = path.split('/').last;
@@ -157,7 +134,6 @@ class LocalDataProvider {
         playlist.duration = playlist.duration + (songModel.duration ?? 0);
         playlist.paths.add(song);
       }
-      playlistBox.put(playlist);
     } else {
       for (int i = paths.length - 1; i >= 0; i--) {
         if (playlist.paths.contains(paths[i])) {
@@ -167,18 +143,28 @@ class LocalDataProvider {
         playlist.duration = playlist.duration + (songModel.duration ?? 0);
         playlist.paths.insert(0, paths[i]);
       }
-      playlistBox.put(playlist);
     }
-    exportPlaylist(playlist);
+    database.updatePlaylist(playlist);
+    notifyListeners();
   }
 
   Future<void> createPlaylist(PlaylistEntity playlist) async {
-    playlistBox.put(playlist);
+    database.createPlaylist(playlist);
     exportPlaylist(playlist);
+    notifyListeners();
   }
 
   Future<void> deletePlaylist(PlaylistEntity playlist) async {
-    playlistBox.remove(playlist.id);
+    database.deletePlaylist(playlist);
+    try{
+      var directory = await getLibraryDirectory();
+      var file = File("$directory/${playlist.name}.m3u");
+      file.delete();
+    } catch (e) {
+      print(e);
+    }
+    notifyListeners();
+
   }
 
   Future<void> exportPlaylist(PlaylistEntity playlist) async {

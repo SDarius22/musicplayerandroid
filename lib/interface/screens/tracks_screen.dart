@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/providers/app_audio_handler.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/utils/extensions.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -110,9 +108,9 @@ class _TracksState extends State<Tracks>{
               Expanded(
                   child: GestureDetector(
                     onTap: (){
-                      if (localDataProvider.selectedPaths.isNotEmpty){
-                        localDataProvider.selectedPaths = [];
-                      }
+                      // if (localDataProvider.selectedPaths.isNotEmpty){
+                      //   localDataProvider.selectedPaths = [];
+                      // }
                     },
                     child: FutureBuilder(
                         future: songsFuture,
@@ -176,21 +174,21 @@ class _TracksState extends State<Tracks>{
                                 return InkWell(
                                   borderRadius: BorderRadius.circular(width * 0.01),
                                   onTap: () async {
-                                    if (localDataProvider.selectedPaths.isNotEmpty){
-                                      if (localDataProvider.selectedPaths.contains(song.data)){
-                                        localDataProvider.selectedPaths.remove(song.data);
-                                        return;
-                                      }
-                                      localDataProvider.selectedPaths.add(song.data);
-                                      return;
-                                    }
+                                    // if (localDataProvider.selectedPaths.isNotEmpty){
+                                    //   if (localDataProvider.selectedPaths.contains(song.data)){
+                                    //     localDataProvider.selectedPaths.remove(song.data);
+                                    //     return;
+                                    //   }
+                                    //   localDataProvider.selectedPaths.add(song.data);
+                                    //   return;
+                                    // }
                                     try {
                                       if (audioProvider.currentSongPath != song.data) {
                                         List<String> songPaths = [];
                                         for (int i = 0; i < snapshot.data!.length; i++) {
                                           songPaths.add(snapshot.data![i].data);
                                         }
-                                        if (audioProvider.unshuffledQueue.equals(songPaths) == false) {
+                                        if (audioProvider.currentAudioInfo.unshuffledQueue.equals(songPaths) == false) {
                                           print("Updating playing songs");
                                           audioProvider.updatePlaying(songPaths, index);
                                         }
@@ -198,7 +196,7 @@ class _TracksState extends State<Tracks>{
                                         await audioProvider.play();
                                       }
                                       else {
-                                        if (audioProvider.playing == true) {
+                                        if (audioProvider.currentAudioInfo.playing == true) {
                                           await audioProvider.pause();
                                         }
                                         else {
@@ -219,7 +217,7 @@ class _TracksState extends State<Tracks>{
                                   },
                                   onLongPress: (){
                                     print("Long pressed");
-                                    localDataProvider.selectedPaths.add(song.data);
+                                    // localDataProvider.selectedPaths.add(song.data);
                                   },
                                   child: Column(
                                     children: [
@@ -251,18 +249,19 @@ class _TracksState extends State<Tracks>{
                                       SizedBox(
                                         height: height * 0.005,
                                       ),
-                                      Text(
-                                        song.title,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          height: 1,
-                                          color: audioProvider.currentSongPath == song.data ? Colors.blue : Colors.white,
-                                          fontSize: smallSize,
-                                          fontWeight: FontWeight.normal,
-                                        ),
-                                      )
+                                      Consumer<AudioProvider>(
+                                        builder: (context, audioProvider, child){
+                                          return Text(
+                                            song.title,
+                                            style: TextStyle(
+                                              color: audioProvider.currentSongPath == song.data ? Colors.blue : Colors.white,
+                                              fontSize: smallSize,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          );
+                                        },
+                                      ),
                                     ],
                                   ),
                                 );
