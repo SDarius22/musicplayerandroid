@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musicplayerandroid/interface/screens/main_screen.dart';
+import 'package:musicplayerandroid/screens/main_screen.dart';
 import 'package:musicplayerandroid/providers/notification_provider.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/auth_provider.dart';

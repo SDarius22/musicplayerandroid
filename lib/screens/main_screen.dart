@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/interface/components/navigation_observer.dart';
-import 'package:musicplayerandroid/interface/components/song_player_widget.dart';
-import 'package:musicplayerandroid/interface/screens/artists_screen.dart';
-import 'package:musicplayerandroid/interface/screens/loading_screen.dart';
-import 'package:musicplayerandroid/interface/screens/playlists_screen.dart';
-import 'package:musicplayerandroid/interface/screens/tracks_screen.dart';
+import 'package:musicplayerandroid/components/navigation_observer.dart';
+import 'package:musicplayerandroid/components/song_player_widget.dart';
+import 'package:musicplayerandroid/screens/artists_screen.dart';
+import 'package:musicplayerandroid/screens/loading_screen.dart';
+import 'package:musicplayerandroid/screens/playlists_screen.dart';
+import 'package:musicplayerandroid/screens/tracks_screen.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:provider/provider.dart';

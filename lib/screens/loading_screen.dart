@@ -1,6 +1,6 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/interface/screens/tracks_screen.dart';
+import 'package:musicplayerandroid/screens/tracks_screen.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:provider/provider.dart';
 

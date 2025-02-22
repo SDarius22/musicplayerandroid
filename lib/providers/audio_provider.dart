@@ -223,6 +223,7 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
   @override
   Future<void> seek(Duration position) async {
     await audioPlayer.seek(position);
+    notifyListeners();
   }
 
   Future<void> addToQueue(List<String> songs) async {

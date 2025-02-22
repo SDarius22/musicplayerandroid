@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/entities/playlist_entity.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
-import 'package:musicplayerandroid/interface/screens/playlist_screen.dart';
+import 'package:musicplayerandroid/screens/playlist_screen.dart';
 import 'package:provider/provider.dart';
 import '../../utils/fluenticons/fluenticons.dart';
 
