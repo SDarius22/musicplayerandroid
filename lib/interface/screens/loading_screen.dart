@@ -1,6 +1,7 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/interface/screens/tracks_screen.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/audio_provider.dart';
@@ -28,6 +29,7 @@ class _LoadingScreenState extends State<LoadingScreen> with AfterLayoutMixin<Loa
     if (mounted) {
       var localDataProvider = Provider.of<LocalDataProvider>(context, listen: false);
       var audioProvider = Provider.of<AudioProvider>(context, listen: false);
+      var pageProvider = Provider.of<PageProvider>(context, listen: false);
       if (audioProvider.currentAudioInfo.unshuffledQueue.isEmpty){
         print("Queue is empty");
         var songs = await localDataProvider.getSongs('');
@@ -35,7 +37,7 @@ class _LoadingScreenState extends State<LoadingScreen> with AfterLayoutMixin<Loa
         int newIndex = 0;
         audioProvider.index = newIndex;
       }
-      Navigator.of(context).pushReplacement(Tracks.route());
+      pageProvider.navigatorKey.currentState!.pushReplacement(Tracks.route());
     }
   }
 

@@ -225,6 +225,7 @@ class _TracksState extends State<Tracks>{
                                         borderRadius: BorderRadius.circular(width * 0.01),
                                         child: ImageWidget(
                                           id: song.id,
+                                          heroTag: song.data,
                                           // child: ValueListenableBuilder(
                                           //   valueListenable: localDataProvider.selectedPaths,
                                           //   builder: (context, value, child){

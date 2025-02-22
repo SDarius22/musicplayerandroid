@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
+import 'package:musicplayerandroid/providers/settings_provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../utils/fluenticons/fluenticons.dart';
 import 'album_screen.dart';
@@ -162,10 +164,11 @@ class _AlbumsState extends State<Albums>{
                               cursor: SystemMouseCursors.click,
                               child: GestureDetector(
                                 onTap: () {
-                                  // Navigator.push(
-                                  //     context,
-                                  //     MaterialPageRoute(builder: (context) => AlbumScreen(album: album))
-                                  // );
+                                  PageProvider().navigatorKey.currentState!.push(
+                                      MaterialPageRoute(
+                                          builder: (context) => AlbumScreen(album: album,)
+                                      )
+                                  );
                                 },
                                 child: Column(
                                   children: [

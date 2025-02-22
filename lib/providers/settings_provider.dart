@@ -12,16 +12,7 @@ class SettingsProvider with ChangeNotifier{
   }
 
   SettingsEntity currentSettings = SettingsEntity();
-
-  bool minimizedValue = true;
-  final navigatorKey = GlobalKey<NavigatorState>();
   final DatabaseProvider databaseProvider = DatabaseProvider();
-
-  bool get minimized => minimizedValue;
-  set minimized(bool minimized) {
-    minimizedValue = minimized;
-    notifyListeners();
-  }
 
   void initialize() {
     loadSettings();

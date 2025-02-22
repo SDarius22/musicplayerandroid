@@ -164,7 +164,7 @@ class _ArtistsState extends State<Artists>{
                               child: GestureDetector(
                                 onTap: () {
                                   //print(artist.name);
-                                  // Navigator.push(context, MaterialPageRoute(builder: (context) => ArtistScreen(artist: artist)));
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => ArtistScreen(artist: artist)));
                                 },
                                 child: Column(
                                   children: [

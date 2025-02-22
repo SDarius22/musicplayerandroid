@@ -1,6 +1,5 @@
 // import 'dart:ui';
 // import 'package:flutter/material.dart';
-// import 'package:musicplayerandroid/providers/worker_controller.dart';
 // import 'package:musicplayerandroid/entities/playlist_entity.dart';
 // import 'package:on_audio_query/on_audio_query.dart';
 // import '../../providers/local_data_provider.dart';
@@ -46,8 +45,6 @@
 //
 //   @override
 //   Widget build(BuildContext context) {
-//     final dc = LocalDataProvider();
-//     final am = AppManager();
 //     var width = MediaQuery.of(context).size.width;
 //     var height = MediaQuery.of(context).size.height;
 //     var boldSize = height * 0.0175;

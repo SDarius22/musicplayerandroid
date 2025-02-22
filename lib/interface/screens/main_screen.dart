@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/interface/components/navigation_observer.dart';
+import 'package:musicplayerandroid/interface/components/song_player_widget.dart';
 import 'package:musicplayerandroid/interface/screens/artists_screen.dart';
 import 'package:musicplayerandroid/interface/screens/loading_screen.dart';
 import 'package:musicplayerandroid/interface/screens/playlists_screen.dart';
 import 'package:musicplayerandroid/interface/screens/tracks_screen.dart';
-import 'package:musicplayerandroid/providers/settings_provider.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:provider/provider.dart';
-import '../components/song_player_widget.dart';
 import 'albums_screen.dart';
 
 class MyApp extends StatelessWidget {
@@ -14,16 +15,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, child) {
+    return Consumer<PageProvider>(
+      builder: (context, pageProvider, child) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Music Player'),
-            actions: [
+            elevation: 0,
+            title: pageProvider.isSecondaryPage ? null : const Text('Music Player'),
+            leading: pageProvider.isSecondaryPage
+                ? IconButton(
+                    icon: const Icon(FluentIcons.left),
+                    onPressed: () {
+                      pageProvider.navigatorKey.currentState!.pop();
+                    },
+                  )
+                : null,
+            actions: pageProvider.isSecondaryPage
+            ? null
+            : [
               IconButton(
                 icon: const Icon(FluentIcons.menu),
                 onPressed: () {
-                  Scaffold.of(settings.navigatorKey.currentContext!).openEndDrawer();
+                  Scaffold.of(pageProvider.navigatorKey.currentContext!).openEndDrawer();
                 },
               ),
             ],
@@ -33,7 +45,8 @@ class MyApp extends StatelessWidget {
               HeroControllerScope(
                 controller: MaterialApp.createMaterialHeroController(),
                 child: Navigator(
-                  key: settings.navigatorKey,
+                  key: pageProvider.navigatorKey,
+                  observers: [SecondNavigatorObserver()],
                   onGenerateRoute: (settings) {
                     return LoadingScreen.route();
                   },
@@ -46,35 +59,37 @@ class MyApp extends StatelessWidget {
               ),
             ],
           ),
-          endDrawer: Drawer(
+          endDrawer: pageProvider.isSecondaryPage
+            ? null
+            : Drawer(
             child: ListView(
               children: [
                 ListTile(
                   title: const Text('Tracks'),
                   onTap: () {
-                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
-                    settings.navigatorKey.currentState!.push(Tracks.route());
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.pushReplacement(Tracks.route());
                   },
                 ),
                 ListTile(
                   title: const Text('Albums'),
                   onTap: () {
-                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
-                    settings.navigatorKey.currentState!.push(Albums.route());
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.pushReplacement(Albums.route());
                   },
                 ),
                 ListTile(
                   title: const Text('Artists'),
                   onTap: () {
-                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
-                    settings.navigatorKey.currentState!.push(Artists.route());
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.pushReplacement(Artists.route());
                   },
                 ),
                 ListTile(
                   title: const Text('Playlists'),
                   onTap: () {
-                    Scaffold.of(settings.navigatorKey.currentContext!).closeEndDrawer();
-                    settings.navigatorKey.currentState!.push(Playlists.route());
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.pushReplacement(Playlists.route());
                   },
                 ),
               ],

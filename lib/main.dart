@@ -8,6 +8,7 @@ import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/auth_provider.dart';
 import 'package:musicplayerandroid/providers/database_provider.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/providers/settings_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:bot_toast/bot_toast.dart';
@@ -45,6 +46,12 @@ class MusicApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<AudioProvider>(
           create: (_) => AudioProvider(),
+        ),
+        Provider<NotificationProvider>(
+          create: (_) => NotificationProvider(),
+        ),
+        ChangeNotifierProvider<PageProvider>(
+          create: (_) => PageProvider(),
         ),
         // ChangeNotifierProvider<AuthProvider>(
         //   create: (_) => AuthProvider(),
