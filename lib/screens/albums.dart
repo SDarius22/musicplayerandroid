@@ -58,6 +58,17 @@ class _AlbumsState extends State<Albums>{
     var normalSize = height * 0.015;
     var smallSize = height * 0.0125;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Albums'),
+        actions: [
+          IconButton(
+            icon: const Icon(FluentIcons.menu),
+            onPressed: () {
+              Scaffold.of(PageProvider().navigatorKey.currentContext!).openEndDrawer();
+            },
+          ),
+        ],
+      ),
       body: SizedBox(
         width: width,
         height: height,

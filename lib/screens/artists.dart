@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:provider/provider.dart';
 import '../../providers/local_data_provider.dart';
@@ -57,6 +58,17 @@ class _ArtistsState extends State<Artists>{
     var normalSize = height * 0.015;
     var smallSize = height * 0.0125;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Artists'),
+        actions: [
+          IconButton(
+            icon: const Icon(FluentIcons.menu),
+            onPressed: () {
+              Scaffold.of(PageProvider().navigatorKey.currentContext!).openEndDrawer();
+            },
+          ),
+        ],
+      ),
       body: SizedBox(
         width: width,
         height: height,

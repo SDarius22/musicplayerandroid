@@ -1,6 +1,6 @@
 import 'package:after_layout/after_layout.dart';
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/screens/tracks_screen.dart';
+import 'package:musicplayerandroid/screens/tracks.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -27,15 +27,13 @@ class _LoadingScreenState extends State<LoadingScreen> with AfterLayoutMixin<Loa
 
   void _routeUser() async {
     if (mounted) {
-      var localDataProvider = Provider.of<LocalDataProvider>(context, listen: false);
       var audioProvider = Provider.of<AudioProvider>(context, listen: false);
       var pageProvider = Provider.of<PageProvider>(context, listen: false);
       if (audioProvider.currentAudioInfo.unshuffledQueue.isEmpty){
-        print("Queue is empty");
-        var songs = await localDataProvider.getSongs('');
+        debugPrint("Queue is empty");
+        var songs = await LocalDataProvider().getSongs('');
         audioProvider.currentAudioInfo.unshuffledQueue = songs.map((e) => e.data).toList();
-        int newIndex = 0;
-        audioProvider.index = newIndex;
+        audioProvider.index = 0;
       }
       pageProvider.navigatorKey.currentState!.pushReplacement(Tracks.route());
     }
@@ -48,24 +46,11 @@ class _LoadingScreenState extends State<LoadingScreen> with AfterLayoutMixin<Loa
       body: SizedBox(
         width: size.width,
         height: size.height,
-        child: SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 100),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 5,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        child: const SafeArea(
+          child: Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+            ),
           ),
         ),
       ),

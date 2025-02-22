@@ -1,52 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/components/navigation_observer.dart';
 import 'package:musicplayerandroid/components/song_player_widget.dart';
-import 'package:musicplayerandroid/screens/artists_screen.dart';
+import 'package:musicplayerandroid/screens/artists.dart';
+import 'package:musicplayerandroid/screens/create.dart';
 import 'package:musicplayerandroid/screens/loading_screen.dart';
-import 'package:musicplayerandroid/screens/playlists_screen.dart';
-import 'package:musicplayerandroid/screens/tracks_screen.dart';
+import 'package:musicplayerandroid/screens/playlists.dart';
+import 'package:musicplayerandroid/screens/settings_screen.dart';
+import 'package:musicplayerandroid/screens/tracks.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
-import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:provider/provider.dart';
-import 'albums_screen.dart';
+import 'albums.dart';
+import 'export.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<PageProvider>(
       builder: (context, pageProvider, child) {
         return Scaffold(
-          appBar: AppBar(
-            elevation: 0,
-            title: pageProvider.isSecondaryPage ? null : const Text('Music Player'),
-            leading: pageProvider.isSecondaryPage
-                ? IconButton(
-                    icon: const Icon(FluentIcons.left),
-                    onPressed: () {
-                      pageProvider.navigatorKey.currentState!.pop();
-                    },
-                  )
-                : null,
-            actions: pageProvider.isSecondaryPage
-            ? null
-            : [
-              IconButton(
-                icon: const Icon(FluentIcons.menu),
-                onPressed: () {
-                  Scaffold.of(pageProvider.navigatorKey.currentContext!).openEndDrawer();
-                },
-              ),
-            ],
-          ),
           body: Stack(
             children: [
               HeroControllerScope(
                 controller: MaterialApp.createMaterialHeroController(),
                 child: Navigator(
                   key: pageProvider.navigatorKey,
-                  observers: [SecondNavigatorObserver()],
                   onGenerateRoute: (settings) {
                     return LoadingScreen.route();
                   },
@@ -59,9 +37,7 @@ class MyApp extends StatelessWidget {
               ),
             ],
           ),
-          endDrawer: pageProvider.isSecondaryPage
-            ? null
-            : Drawer(
+          endDrawer: Drawer(
             child: ListView(
               children: [
                 ListTile(
@@ -90,6 +66,27 @@ class MyApp extends StatelessWidget {
                   onTap: () {
                     Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
                     pageProvider.navigatorKey.currentState!.pushReplacement(Playlists.route());
+                  },
+                ),
+                ListTile(
+                  title: const Text('Create'),
+                  onTap: () {
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.push(CreateScreen.route());
+                  },
+                ),
+                ListTile(
+                  title: const Text('Settings'),
+                  onTap: () {
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.pushReplacement(SettingsScreen.route());
+                  },
+                ),
+                ListTile(
+                  title: const Text('Export Playlists'),
+                  onTap: () {
+                    Scaffold.of(pageProvider.navigatorKey.currentContext!).closeEndDrawer();
+                    pageProvider.navigatorKey.currentState!.push(ExportScreen.route());
                   },
                 ),
               ],

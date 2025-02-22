@@ -2,12 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/entities/playlist_entity.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/screens/playlist_screen.dart';
+import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:provider/provider.dart';
-import '../../utils/fluenticons/fluenticons.dart';
 
 import '../components/image_widget.dart';
-import 'create_screen.dart';
+import 'create.dart';
 
 class Playlists extends StatefulWidget{
   static Route<dynamic> route() {
@@ -28,12 +29,6 @@ class _PlaylistsState extends State<Playlists>{
   Timer? _debounce;
   late Future<List<PlaylistEntity>> playlistsFuture;
   late LocalDataProvider localDataProvider;
-
-  @override
-  void initState(){
-    super.initState();
-
-  }
 
   _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
@@ -62,6 +57,17 @@ class _PlaylistsState extends State<Playlists>{
     var normalSize = height * 0.015;
     var smallSize = height * 0.0125;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Playlists'),
+        actions: [
+          IconButton(
+            icon: const Icon(FluentIcons.menu),
+            onPressed: () {
+              Scaffold.of(PageProvider().navigatorKey.currentContext!).openEndDrawer();
+            },
+          ),
+        ],
+      ),
       body: SizedBox(
         width: width,
         height: height,
@@ -167,7 +173,7 @@ class _PlaylistsState extends State<Playlists>{
                             cursor: SystemMouseCursors.click,
                             child: GestureDetector(
                               onTap: (){
-                                // Navigator.push(context, MaterialPageRoute(builder: (context) => CreateScreen(name: value,)));
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => CreateScreen(name: value,)));
                               },
                               child: Column(
                                 children: [
@@ -212,7 +218,7 @@ class _PlaylistsState extends State<Playlists>{
                             child: GestureDetector(
                               onTap: () {
                                 //print(playlist.name);
-                                // Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistScreen(playlist: playlist)));
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => PlaylistScreen(playlist: playlist)));
                               },
                               child: Column(
                                 children: [

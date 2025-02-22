@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musicplayerandroid/screens/main_screen.dart';
+import 'package:musicplayerandroid/screens/home.dart';
 import 'package:musicplayerandroid/providers/notification_provider.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/auth_provider.dart';
@@ -63,7 +63,7 @@ class MusicApp extends StatelessWidget {
         ),
         builder: BotToastInit(),
         debugShowCheckedModeBanner: false,
-        home: const MyApp(),
+        home: const HomePage(),
       ),
     );
   }

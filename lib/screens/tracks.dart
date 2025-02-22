@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
+import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/utils/extensions.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:provider/provider.dart';
@@ -26,8 +27,7 @@ class Tracks extends StatefulWidget{
 class _TracksState extends State<Tracks>{
   FocusNode searchNode = FocusNode();
   Timer? _debounce;
-  late Future songsFuture;
-  late LocalDataProvider localDataProvider;
+  late Future songsFuture = LocalDataProvider().getSongs('');
   late AudioProvider audioProvider;
 
   _onSearchChanged(String query) {
@@ -35,12 +35,18 @@ class _TracksState extends State<Tracks>{
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
         if (query.isEmpty){
-          songsFuture = localDataProvider.getSongs('');
+          songsFuture = LocalDataProvider().getSongs('');
           return;
         }
-        songsFuture = localDataProvider.getSongs(query, 25);
+        songsFuture = LocalDataProvider().getSongs(query, 25);
       });
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    songsFuture = LocalDataProvider().getSongs('');
   }
 
 
@@ -53,15 +59,24 @@ class _TracksState extends State<Tracks>{
 
   @override
   Widget build(BuildContext context) {
-    localDataProvider = Provider.of<LocalDataProvider>(context, listen: false);
     audioProvider = Provider.of<AudioProvider>(context, listen: false);
-    songsFuture = localDataProvider.getSongs('');
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
     // var boldSize = height * 0.0175;
     var normalSize = height * 0.015;
     var smallSize = height * 0.0125;
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tracks'),
+        actions: [
+          IconButton(
+            icon: const Icon(FluentIcons.menu),
+            onPressed: () {
+              Scaffold.of(PageProvider().navigatorKey.currentContext!).openEndDrawer();
+            },
+          ),
+        ],
+      ),
       body: SizedBox(
         width: width,
         height: height,
@@ -115,41 +130,7 @@ class _TracksState extends State<Tracks>{
                     child: FutureBuilder(
                         future: songsFuture,
                         builder: (context, snapshot){
-                          if(snapshot.hasError){
-                            print(snapshot.error);
-                            return Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    FluentIcons.error,
-                                    size: height * 0.1,
-                                    color: Colors.red,
-                                  ),
-                                  Text(
-                                    "Error loading songs",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: smallSize,
-                                    ),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: (){
-                                      setState(() {});
-                                    },
-                                    child: Text(
-                                      "Retry",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: smallSize,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          else if(snapshot.hasData){
+                          if(snapshot.hasData){
                             if (snapshot.data!.isEmpty){
                               return Center(
                                 child: Text("No songs found", style: TextStyle(color: Colors.white, fontSize: smallSize),),

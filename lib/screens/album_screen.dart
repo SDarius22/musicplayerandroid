@@ -1,11 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/utils/extensions.dart';
+import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../providers/audio_provider.dart';
 import '../../providers/local_data_provider.dart';
 import '../components/image_widget.dart';
-import 'add_screen.dart';
+import 'add.dart';
 
 class AlbumScreen extends StatelessWidget {
   final AlbumModel album;
@@ -31,27 +32,35 @@ class AlbumScreen extends StatelessWidget {
       future: getAlbumSongs(),
       builder: (context, snapshot) {
         return Scaffold(
-          // appBar: AppBar(
-          //   actions: [
-          //     IconButton(
-          //       icon: const Icon(
-          //         Icons.add,
-          //         color: Colors.white,
-          //       ),
-          //       onPressed: snapshot.hasData
-          //           ? (){
-          //         print("Add ${album.album}");
-          //         List<String> songPaths = snapshot.data!.map((e) => e.data).toList();
-          //         Navigator.push(context,
-          //             MaterialPageRoute(
-          //                 builder: (context) => AddScreen(paths: songPaths)
-          //             )
-          //         );
-          //       }
-          //           : null,
-          //     ),
-          //   ],
-          // ),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: Icon(
+                FluentIcons.back,
+                color: Colors.white,
+                size: height * 0.025,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            actions: [
+              IconButton(
+                onPressed: snapshot.hasData == false ? null : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddScreen(paths: snapshot.data!.map((e) => e.data).toList()),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  FluentIcons.add,
+                  color: Colors.white,
+                  size: height * 0.025,
+                ),
+              ),
+            ],
+          ),
           body: Container(
             width: width,
             height: height,
