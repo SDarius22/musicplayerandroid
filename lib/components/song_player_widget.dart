@@ -3,6 +3,7 @@ import 'package:musicplayerandroid/components/player_tabs/details_tab.dart';
 import 'package:musicplayerandroid/components/player_tabs/lyrics_tab.dart';
 import 'package:musicplayerandroid/components/player_tabs/queue_tab.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
@@ -19,27 +20,27 @@ class SongPlayerWidget extends StatefulWidget {
 }
 
 class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProviderStateMixin {
-  late LocalDataProvider localDataProvider;
-
   final PageController _pageController = PageController(initialPage: 1);
+
+  late LocalDataProvider localDataProvider;
   late PageProvider pageProvider;
-  late AudioProvider audioProvider;
+  late InfoProvider infoProvider;
 
   @override
   Widget build(BuildContext context) {
     localDataProvider = Provider.of<LocalDataProvider>(context, listen: false);
     pageProvider = Provider.of<PageProvider>(context, listen: true);
-    audioProvider = Provider.of<AudioProvider>(context, listen: true);
+    infoProvider = Provider.of<InfoProvider>(context, listen: true);
 
     var width = MediaQuery.of(context).size.width;
     var height = MediaQuery.of(context).size.height;
 
-    if (audioProvider.currentSongModel.getMap.isEmpty) {
+    if (infoProvider.currentSongModel.getMap.isEmpty) {
       return const SizedBox();
     }
     return SlidingUpPanel(
       minHeight: height * 0.075,
-      maxHeight: height * 0.925,
+      maxHeight: height * 0.9,
       controller: pageProvider.playerController,
       margin: pageProvider.minimized
           ? EdgeInsets.only(
@@ -61,6 +62,56 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
     );
   }
 
+  Widget buildPlayerButtons(double width, double height) {
+    return Consumer<AudioProvider>(
+      builder: (_, audioProvider, __){
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            IconButton(
+              onPressed: () async {
+                await audioProvider.skipToPrevious();
+              },
+              icon: Icon(
+                FluentIcons.previous,
+                color: Colors.white,
+                size: height * 0.022,
+              ),
+            ),
+            IconButton(
+              onPressed: () async {
+                //print("pressed pause play");
+                if (infoProvider.currentAudioInfo.playing) {
+                  await audioProvider.pause();
+                } else {
+                  await audioProvider.play();
+                }
+              },
+              icon: Icon(
+                infoProvider.currentAudioInfo.playing
+                    ? FluentIcons.pause
+                    : FluentIcons.play,
+                color: Colors.white,
+                size: height * 0.03,
+              ),
+            ),
+            IconButton(
+              onPressed: () async {
+                await audioProvider.skipToNext();
+              },
+              icon: Icon(
+                FluentIcons.next,
+                color: Colors.white,
+                size: height * 0.025,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   Widget buildMinimizedPlayer(double width, double height) {
     return Container(
@@ -70,7 +121,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
       alignment: Alignment.center,
       padding: const EdgeInsets.all(1),
       decoration: BoxDecoration(
-        color: audioProvider.darkColor,
+        color: infoProvider.darkColor,
         borderRadius: BorderRadius.circular(width * 0.1),
       ),
       child: GestureDetector(
@@ -87,10 +138,10 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
               child: Container(
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.black,
+                    color: infoProvider.darkColor,
                     image: DecorationImage(
                       fit: BoxFit.cover,
-                      image: Image.memory(audioProvider.currentSongImage).image,
+                      image: Image.memory(infoProvider.currentSongImage).image,
                     )
                 ),
               ),
@@ -103,7 +154,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextScroll(
-                    audioProvider.currentSongModel.title.toString(),
+                    infoProvider.currentSongModel.title.toString(),
                     mode: TextScrollMode.endless,
                     velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
                     style: const TextStyle(
@@ -115,7 +166,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
                     pauseBetween: const Duration(seconds: 2),
                   ),
                   TextScroll(
-                    audioProvider.currentSongModel.artist ?? "Unknown",
+                    infoProvider.currentSongModel.artist ?? "Unknown",
                     mode: TextScrollMode.bouncing,
                     pauseOnBounce: const Duration(seconds: 1),
                     style: TextStyle(
@@ -130,43 +181,7 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
               ),
             ),
             const Spacer(),
-            IconButton(
-              onPressed: () async {
-                await audioProvider.skipToPrevious();
-              },
-              icon: Icon(
-                FluentIcons.previous,
-                color: Colors.white,
-                size: height * 0.022,
-              ),
-            ),
-            IconButton(
-              onPressed: () async {
-                //print("pressed pause play");
-                if (audioProvider.currentAudioInfo.playing) {
-                  await audioProvider.pause();
-                } else {
-                  await audioProvider.play();
-                }
-              },
-              icon: Icon(
-                audioProvider.currentAudioInfo.playing ?
-                FluentIcons.pause :
-                FluentIcons.play,
-                color: Colors.white,
-                size: height * 0.025,
-              ),
-            ),
-            IconButton(
-              onPressed: () async {
-                await audioProvider.skipToNext();
-              },
-              icon: Icon(
-                FluentIcons.next,
-                color: Colors.white,
-                size: height * 0.025,
-              ),
-            ),
+            buildPlayerButtons(width, height),
 
           ],
         ),
@@ -237,98 +252,69 @@ class _SongPlayerWidgetState extends State<SongPlayerWidget> with TickerProvider
               horizontal: width * 0.01,
             ),
             child: FutureBuilder(
-              future: audioProvider.getCurrentSongDuration(),
+              future: AudioProvider().getCurrentSongDuration(),
               builder: (context, snapshot){
-                return ProgressBar(
-                  progress: Duration(milliseconds: audioProvider.currentAudioInfo.slider),
-                  total: snapshot.hasData ? Duration(milliseconds: snapshot.data!.inMilliseconds) : Duration.zero,
-                  progressBarColor: audioProvider.lightColor,
-                  baseBarColor: Colors.white.withOpacity(0.5),
-                  bufferedBarColor: Colors.white.withOpacity(0.5),
-                  thumbColor: Colors.white,
-                  barHeight: 4.0,
-                  thumbRadius: 7.0,
-                  timeLabelLocation: TimeLabelLocation.sides,
-                  timeLabelTextStyle: TextStyle(
-                    color: Colors.white,
-                    fontSize: height * 0.0175,
-                    fontFamily: 'Bahnschrift',
-                    fontWeight: FontWeight.normal,
-                  ),
-                  onSeek: (duration) {
-                    audioProvider.audioPlayer.seek(duration);
+                return Consumer<AudioProvider>(
+                  builder: (_, audioProvider, __){
+                    return ProgressBar(
+                      progress: Duration(milliseconds: infoProvider.currentAudioInfo.slider),
+                      total: snapshot.hasData ? Duration(milliseconds: snapshot.data!.inMilliseconds) : Duration.zero,
+                      progressBarColor: infoProvider.lightColor,
+                      baseBarColor: Colors.white.withOpacity(0.5),
+                      bufferedBarColor: Colors.white.withOpacity(0.5),
+                      thumbColor: Colors.white,
+                      barHeight: 4.0,
+                      thumbRadius: 7.0,
+                      timeLabelLocation: TimeLabelLocation.sides,
+                      timeLabelTextStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: height * 0.0175,
+                        fontFamily: 'Bahnschrift',
+                        fontWeight: FontWeight.normal,
+                      ),
+                      onSeek: (duration) {
+                        audioProvider.seek(duration);
+                      },
+                    );
                   },
                 );
+
               },
             ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              IconButton(
-                onPressed: () {
-                  audioProvider.shuffle = !audioProvider.shuffle;
-                },
-                icon: Icon(
-                  audioProvider.shuffle == false
-                      ? FluentIcons.shuffleOff
-                      : FluentIcons.shuffleOn,
-                  size: height * 0.025,
-                  color: Colors.white,
+              if (!pageProvider.minimized)
+                IconButton(
+                  onPressed: () {
+                    infoProvider.shuffle = !infoProvider.shuffle;
+                  },
+                  icon: Icon(
+                    infoProvider.shuffle == false
+                        ? FluentIcons.shuffleOff
+                        : FluentIcons.shuffleOn,
+                    size: height * 0.025,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: () async {
-                  await audioProvider.skipToPrevious();
-                },
-                icon: Icon(
-                  FluentIcons.previous,
-                  color: Colors.white,
-                  size: height * 0.022,
+              buildPlayerButtons(width, height),
+              if (!pageProvider.minimized)
+                IconButton(
+                  onPressed: () {
+                    infoProvider.repeat = !infoProvider.repeat;
+                  },
+                  icon: Icon(
+                    infoProvider.repeat == false
+                        ? FluentIcons.repeatOff
+                        : FluentIcons.repeatOn,
+                    size: height * 0.025,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: () async {
-                  //print("pressed pause play");
-                  if (audioProvider.currentAudioInfo.playing) {
-                    await audioProvider.pause();
-                  } else {
-                    await audioProvider.play();
-                  }
-                },
-                icon: Icon(
-                  audioProvider.currentAudioInfo.playing
-                      ? FluentIcons.pause
-                      : FluentIcons.play,
-                  color: Colors.white,
-                  size: height * 0.025,
-                ),
-              ),
-              IconButton(
-                onPressed: () async {
-                  await audioProvider.skipToNext();
-                },
-                icon: Icon(
-                  FluentIcons.next,
-                  color: Colors.white,
-                  size: height * 0.025,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  audioProvider.repeat = !audioProvider.repeat;
-                },
-                icon: Icon(
-                  audioProvider.repeat == false
-                      ? FluentIcons.repeatOff
-                      : FluentIcons.repeatOn,
-                  size: height * 0.025,
-                  color: Colors.white,
-                ),
-              ),
             ],
           ),
+
         ],
       ),
     );

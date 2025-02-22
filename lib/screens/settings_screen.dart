@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
 import 'package:musicplayerandroid/providers/settings_provider.dart';
 import 'package:provider/provider.dart';
@@ -29,8 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     var boldSize = height * 0.0175;
     var normalSize = height * 0.015;
     var smallSize = height * 0.0125;
-    return Consumer<SettingsProvider>(
-      builder: (_, settingsProvider, __){
+    return Consumer2<SettingsProvider, InfoProvider>(
+      builder: (_, settingsProvider, infoProvider, __){
         return Scaffold(
           appBar: AppBar(
             title: Text(
@@ -237,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 thumbColor: Colors.white,
                                 thumbShape: RoundSliderThumbShape(enabledThumbRadius: height * 0.0075),
                                 showValueIndicator: ShowValueIndicator.always,
-                                activeTrackColor: audioProvider.lightColor,
+                                activeTrackColor: infoProvider.lightColor,
                                 inactiveTrackColor: Colors.white,
                                 valueIndicatorColor: Colors.white,
                                 valueIndicatorTextStyle: TextStyle(

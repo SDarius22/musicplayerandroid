@@ -3,13 +3,10 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musicplayerandroid/entities/audio_info_entity.dart';
-import 'package:musicplayerandroid/providers/database_provider.dart';
-import 'package:musicplayerandroid/providers/local_data_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
-import 'settings_provider.dart';
 
 
 class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
@@ -20,69 +17,34 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
     initialize();
   }
 
-  AudioInfoEntity currentAudioInfo = AudioInfoEntity();
-  SongModel currentSongModel = SongModel({});
-  Uint8List currentSongImage = Uint8List(0);
-  Color lightColor = Colors.white;
-  Color darkColor = Colors.black;
+  int sliderValue = 0;
+  bool playingValue = false;
+
   AudioPlayer audioPlayer = AudioPlayer();
+  final InfoProvider infoProvider = InfoProvider();
 
-  int get index => currentAudioInfo.index;
-  set index(int value) {
-    currentAudioInfo.index = value;
-    currentAudioInfo.slider = 0;
-    updateCurrentSong();
-  }
-
-  bool get repeat => currentAudioInfo.repeat;
-  set repeat(bool value) {
-    currentAudioInfo.repeat = value;
+  int get slider => sliderValue;
+  set slider(int value) {
+    sliderValue = value;
+    infoProvider.slider = value;
     notifyListeners();
   }
 
-  bool get shuffle => currentAudioInfo.shuffle;
-  set shuffle(bool value) {
-    currentAudioInfo.shuffle = value;
+  bool get playing => playingValue;
+  set playing(bool value) {
+    playingValue = value;
+    infoProvider.playing = value;
     notifyListeners();
   }
-
-  String get currentSongPath => shuffle
-      ? currentAudioInfo.shuffledQueue[index]
-      : currentAudioInfo.unshuffledQueue[index];
-  List<String> get currentQueue => shuffle
-      ? currentAudioInfo.shuffledQueue
-      : currentAudioInfo.unshuffledQueue;
-
-  final DatabaseProvider databaseProvider = DatabaseProvider();
-  final SettingsProvider settingsProvider = SettingsProvider();
-  final LocalDataProvider localDataProvider = LocalDataProvider();
 
   Future<void> initialize() async {
-    loadAudioInfo();
     initializeListeners();
-    updateCurrentSong();
+    initializeSlider();
   }
 
-  void loadAudioInfo() {
-    currentAudioInfo = databaseProvider.audioInfo;
+  void initializeSlider() {
+    slider = infoProvider.slider;
   }
-
-  void updateAudioInfo() {
-    databaseProvider.updateAudioInfo((audioInfo) {
-      audioInfo.index = currentAudioInfo.index;
-      audioInfo.slider = currentAudioInfo.slider;
-      audioInfo.playing = currentAudioInfo.playing;
-      audioInfo.repeat = currentAudioInfo.repeat;
-      audioInfo.shuffle = currentAudioInfo.shuffle;
-      audioInfo.balance = currentAudioInfo.balance;
-      audioInfo.speed = currentAudioInfo.speed;
-      audioInfo.volume = currentAudioInfo.volume;
-      audioInfo.sleepTimer = currentAudioInfo.sleepTimer;
-      audioInfo.unshuffledQueue = currentAudioInfo.unshuffledQueue;
-      audioInfo.shuffledQueue = currentAudioInfo.shuffledQueue;
-    });
-  }
-
 
   void initializeListeners () {
     startPlaybackListener();
@@ -121,17 +83,15 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
 
   void startPositionListener() {
     audioPlayer.positionStream.listen((Duration event)  {
-      currentAudioInfo.slider = event.inMilliseconds;
-      updateAudioInfo();
-      notifyListeners();
+      slider = event.inMilliseconds;
     });
   }
 
   void startStateListener() {
     audioPlayer.playerStateStream.listen((PlayerState state) {
-      currentAudioInfo.playing = state.playing;
+      infoProvider.playing = state.playing;
       if (state.processingState == ProcessingState.completed) {
-        if (repeat) {
+        if (infoProvider.repeat) {
           replay();
         } else {
           skipToNext();
@@ -142,17 +102,10 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
   }
 
   Future<Duration> getCurrentSongDuration() async {
-    if (currentSongModel.duration != null) {
-      return Duration(milliseconds: currentSongModel.duration!);
+    if (infoProvider.currentSongModel.duration != null) {
+      return Duration(milliseconds: infoProvider.currentSongModel.duration!);
     }
     return audioPlayer.duration ?? const Duration(milliseconds: 0);
-  }
-
-  Future<void> updateCurrentSong() async {
-    currentSongModel = await localDataProvider.getSong(currentSongPath);
-    currentSongImage = await localDataProvider.getImage(currentSongModel.id);
-    updateNotificationBar(currentSongModel, currentSongImage);
-    notifyListeners();
   }
 
   Future<void> updateNotificationBar(SongModel song, Uint8List bytes) async {
@@ -178,16 +131,16 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
   @override
   Future<void> play() async {
     audioPlayer.setUrl(
-        currentSongPath,
-        initialPosition: Duration(milliseconds: currentAudioInfo.slider)
+        infoProvider.currentSongPath,
+        initialPosition: Duration(milliseconds: infoProvider.slider)
     );
-    audioPlayer.setVolume(currentAudioInfo.volume);
-    audioPlayer.setSpeed(currentAudioInfo.speed);
+    audioPlayer.setVolume(infoProvider.volume);
+    audioPlayer.setSpeed(infoProvider.speed);
     await audioPlayer.play();
   }
 
   Future<void> replay() async {
-    currentAudioInfo.slider = 0;
+    slider = 0;
     play();
   }
 
@@ -198,23 +151,23 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
 
   @override
   Future<void> skipToNext() async {
-    if (index == currentAudioInfo.unshuffledQueue.length - 1) {
-      index = 0;
+    if (infoProvider.index == infoProvider.unshuffledQueue.length - 1) {
+      infoProvider.index = 0;
     } else {
-      index += 1;
+      infoProvider.index += 1;
     }
     await play();
   }
 
   @override
   Future<void> skipToPrevious() async {
-    if (currentAudioInfo.slider > 5000) {
+    if (slider > 5000) {
       audioPlayer.seek(const Duration(milliseconds: 0));
     } else {
-        if (index == 0) {
-          index = currentAudioInfo.unshuffledQueue.length - 1;
+        if (infoProvider.index == 0) {
+          infoProvider.index = infoProvider.unshuffledQueue.length - 1;
         } else {
-          index -= 1;
+          infoProvider.index -= 1;
         }
         await play();
     }
@@ -223,62 +176,6 @@ class AudioProvider extends BaseAudioHandler with SeekHandler, ChangeNotifier{
   @override
   Future<void> seek(Duration position) async {
     await audioPlayer.seek(position);
-    notifyListeners();
-  }
-
-  Future<void> addToQueue(List<String> songs) async {
-    if (settingsProvider.currentSettings.queueAdd == 'last') {
-      currentAudioInfo.unshuffledQueue.addAll(songs);
-      currentAudioInfo.shuffledQueue.addAll(songs);
-    } else if (settingsProvider.currentSettings.queueAdd == 'next') {
-      currentAudioInfo.unshuffledQueue.insertAll(index + 1, songs);
-      currentAudioInfo.shuffledQueue.insertAll(index + 1, songs);
-    } else if (settingsProvider.currentSettings.queueAdd == 'first') {
-      currentAudioInfo.unshuffledQueue.insertAll(0, songs);
-      currentAudioInfo.shuffledQueue.insertAll(0, songs);
-    }
-    notifyListeners();
-  }
-
-  Future<void> removeFromQueue(String song) async {
-    if (currentAudioInfo.shuffledQueue.length == 1) {
-      debugPrint("The queue cannot be empty");
-      return;
-    }
-
-    currentAudioInfo.unshuffledQueue.remove(song);
-    currentAudioInfo.shuffledQueue.remove(song);
-    if (!currentAudioInfo.unshuffledQueue.contains(currentSongPath)) {
-      index = 0;
-    } else {
-      index = currentAudioInfo.unshuffledQueue.indexOf(currentSongPath);
-    }
-    notifyListeners();
-  }
-
-  Future<void> reorderQueue(int oldIndex, int newIndex) async {
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
-    String song = currentAudioInfo.unshuffledQueue.removeAt(oldIndex);
-    currentAudioInfo.unshuffledQueue.insert(newIndex, song);
-    if (oldIndex == index) {
-      index = newIndex;
-    } else if (oldIndex < index && newIndex >= index) {
-      index -= 1;
-    } else if (oldIndex > index && newIndex <= index) {
-      index += 1;
-    }
-    notifyListeners();
-  }
-
-  Future<void> updatePlaying(List<String> songs, int newIndex) async {
-    if (settingsProvider.currentSettings.queuePlay == 'all') {
-      currentAudioInfo.unshuffledQueue = songs;
-      index = newIndex;
-    } else {
-      addToQueue([songs[newIndex]]);
-    }
     notifyListeners();
   }
 

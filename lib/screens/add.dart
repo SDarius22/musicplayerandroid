@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/database_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:provider/provider.dart';
 import '../../providers/local_data_provider.dart';
 import '../../entities//playlist_entity.dart';
@@ -18,13 +18,13 @@ class AddScreen extends StatefulWidget {
 
 class _AddScreenState extends State<AddScreen> {
   List<int> selected = [];
-  late AudioProvider audioProvider;
+  late InfoProvider infoProvider;
   late DatabaseProvider databaseProvider;
   late LocalDataProvider localDataProvider;
 
   @override
   Widget build(BuildContext context) {
-    audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    infoProvider = Provider.of<InfoProvider>(context, listen: false);
     databaseProvider = Provider.of<DatabaseProvider>(context, listen: false);
     localDataProvider = Provider.of<LocalDataProvider>(context, listen: false);
     //print(widget.songs.length);
@@ -54,7 +54,7 @@ class _AddScreenState extends State<AddScreen> {
                 for(int i = 0; i < selected.length; i++){
                   if(selected[i] == 0){
                     //print(paths);
-                    audioProvider.addToQueue(widget.paths);
+                    infoProvider.addToQueue(widget.paths);
                   }
                   else{
                     var playlist = query.find()[i];

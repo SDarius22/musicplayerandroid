@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/database_provider.dart';
-import 'package:musicplayerandroid/providers/page_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import '../../providers/local_data_provider.dart';
 import '../../entities/playlist_entity.dart';
 import '../../database/objectbox.g.dart';
@@ -61,7 +61,7 @@ class _ExportScreenState extends State<ExportScreen> {
                   if(i == 0){
                     PlaylistEntity queuePlaylist = PlaylistEntity();
                     queuePlaylist.name = "Current Queue";
-                    queuePlaylist.paths = AudioProvider().currentAudioInfo.unshuffledQueue;
+                    queuePlaylist.paths = InfoProvider().unshuffledQueue;
                     dc.exportPlaylist(queuePlaylist);
                   }
                   else{

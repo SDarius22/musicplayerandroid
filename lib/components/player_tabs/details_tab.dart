@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:musicplayerandroid/providers/audio_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
 import 'package:musicplayerandroid/utils/text_scroll/text_scroll.dart';
 import 'package:provider/provider.dart';
@@ -7,13 +7,13 @@ import 'package:provider/provider.dart';
 class DetailsTab extends StatelessWidget {
   DetailsTab({super.key});
   final ScrollController itemScrollController = ScrollController();
-  late final AudioProvider audioProvider;
+  late final InfoProvider infoProvider;
   late final LocalDataProvider localDataProvider;
 
   @override
   Widget build(BuildContext context) {
     try {
-      audioProvider = Provider.of<AudioProvider>(context, listen: true);
+      infoProvider = Provider.of<InfoProvider>(context, listen: true);
       localDataProvider = Provider.of<LocalDataProvider>(context);
     } catch (e) {
       debugPrint("Error: $e");
@@ -36,13 +36,13 @@ class DetailsTab extends StatelessWidget {
                borderRadius: BorderRadius.circular(width * 0.025),
                image: DecorationImage(
                  fit: BoxFit.cover,
-                 image: Image.memory(audioProvider.currentSongImage).image,
+                 image: Image.memory(infoProvider.currentSongImage).image,
                )
            ),
          ),
        ),
        TextScroll(
-         audioProvider.currentSongModel.title.toString(),
+         infoProvider.currentSongModel.title.toString(),
          mode: TextScrollMode.endless,
          velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
          style: TextStyle(
@@ -54,7 +54,7 @@ class DetailsTab extends StatelessWidget {
          pauseBetween: const Duration(seconds: 2),
        ),
        TextScroll(
-         audioProvider.currentSongModel.artist ?? "Unknown",
+         infoProvider.currentSongModel.artist ?? "Unknown",
          mode: TextScrollMode.bouncing,
          pauseOnBounce: const Duration(seconds: 1),
          style: TextStyle(

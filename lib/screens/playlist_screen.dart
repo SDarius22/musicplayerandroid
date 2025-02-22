@@ -5,6 +5,7 @@ import 'package:musicplayerandroid/components/image_widget.dart';
 import 'package:musicplayerandroid/entities/playlist_entity.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
 import 'package:musicplayerandroid/providers/database_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/utils/extensions.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../providers/notification_provider.dart';
@@ -230,10 +231,11 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                     behavior: HitTestBehavior.translucent,
                                     onTap: () async {
                                       var songPaths = widget.playlist.paths;
-                                      if(AudioProvider().currentAudioInfo.unshuffledQueue.equals(songPaths) == false){
-                                        AudioProvider().updatePlaying(songPaths, index);
+                                      var infoProvider = InfoProvider();
+                                      if(infoProvider.unshuffledQueue.equals(songPaths) == false){
+                                        infoProvider.updatePlaying(songPaths, index);
                                       }
-                                      AudioProvider().index = AudioProvider().currentQueue.indexOf(song.data);
+                                      infoProvider.index = infoProvider.currentQueue.indexOf(song.data);
                                       await AudioProvider().play();
                                     },
                                     child: ClipRRect(

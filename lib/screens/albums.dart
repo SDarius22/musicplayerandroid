@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
-import 'package:musicplayerandroid/providers/settings_provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../utils/fluenticons/fluenticons.dart';
 import 'album_screen.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:musicplayerandroid/components/image_widget.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
 import 'package:musicplayerandroid/utils/text_scroll/text_scroll.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -9,13 +10,13 @@ import 'package:provider/provider.dart';
 class QueueTab extends StatelessWidget {
   QueueTab({super.key});
   final ScrollController itemScrollController = ScrollController();
-  late final AudioProvider audioProvider;
+  late final InfoProvider infoProvider;
   late final LocalDataProvider localDataProvider;
 
   @override
   Widget build(BuildContext context) {
     try {
-      audioProvider = Provider.of<AudioProvider>(context, listen: true);
+      infoProvider = Provider.of<InfoProvider>(context, listen: true);
       localDataProvider = Provider.of<LocalDataProvider>(context);
     } catch (e) {
       debugPrint("Error: $e");
@@ -35,7 +36,7 @@ class QueueTab extends StatelessWidget {
       radius: const Radius.circular(10.0),
       child: ListView.builder(
         controller: itemScrollController,
-        itemCount: audioProvider.currentAudioInfo.unshuffledQueue.length,
+        itemCount: infoProvider.currentAudioInfo.unshuffledQueue.length,
         prototypeItem: ListTile(
           title: const Text("Prototype"),
           subtitle: const Text("Prototype"),
@@ -50,14 +51,14 @@ class QueueTab extends StatelessWidget {
         ),
         itemBuilder: (context, int index) {
           return FutureBuilder(
-            future: localDataProvider.getSong(audioProvider.currentAudioInfo.unshuffledQueue[index]),
+            future: localDataProvider.getSong(infoProvider.currentAudioInfo.unshuffledQueue[index]),
             builder: (context, snapshot){
               if(snapshot.hasData){
                 var song = snapshot.data as SongModel;
                 return ListTile(
                   onTap: () async {
-                    audioProvider.index = audioProvider.currentQueue.indexOf(audioProvider.currentAudioInfo.unshuffledQueue[index]);
-                    await audioProvider.play();
+                    infoProvider.index = infoProvider.currentQueue.indexOf(infoProvider.currentAudioInfo.unshuffledQueue[index]);
+                    await AudioProvider().play();
                   },
                   leading: ImageWidget(
                     id: song.id,
@@ -70,7 +71,7 @@ class QueueTab extends StatelessWidget {
                         mode: TextScrollMode.bouncing,
                         velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
                         style: TextStyle(
-                          color: audioProvider.currentSongPath != song.data ? Colors.white : Colors.blue,
+                          color: infoProvider.currentSongPath != song.data ? Colors.white : Colors.blue,
                           fontSize: normalSize,
                           fontWeight: FontWeight.normal,
                         ),
@@ -87,7 +88,7 @@ class QueueTab extends StatelessWidget {
                         mode: TextScrollMode.bouncing,
                         velocity: const Velocity(pixelsPerSecond: Offset(20, 0)),
                         style: TextStyle(
-                          color: audioProvider.currentSongPath != song.data ? Colors.white : Colors.blue,
+                          color: infoProvider.currentSongPath != song.data ? Colors.white : Colors.blue,
                           fontSize: smallSize,
                           fontWeight: FontWeight.normal,
                         ),
@@ -103,7 +104,7 @@ class QueueTab extends StatelessWidget {
                         "${(song.duration! ~/ 1000 ~/ 60).toString().padLeft(2, '0')}"
                             ":${(song.duration! ~/ 1000 % 60).toString().padLeft(2, '0')}",
                         style: TextStyle(
-                          color: audioProvider.currentSongPath != song.data ? Colors.white : Colors.blue,
+                          color: infoProvider.currentSongPath != song.data ? Colors.white : Colors.blue,
                           fontSize: normalSize,
                           fontWeight: FontWeight.normal,
                         ),

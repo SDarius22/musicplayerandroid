@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
+import 'package:musicplayerandroid/providers/selection_provider.dart';
 import 'package:musicplayerandroid/screens/home.dart';
 import 'package:musicplayerandroid/providers/notification_provider.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
@@ -43,6 +45,9 @@ class MusicApp extends StatelessWidget {
         ChangeNotifierProvider<SettingsProvider>(
           create: (_) => SettingsProvider(),
         ),
+        ChangeNotifierProvider<InfoProvider>(
+          create: (_) => InfoProvider(),
+        ),
         ChangeNotifierProvider<AudioProvider>(
           create: (_) => AudioProvider(),
         ),
@@ -51,6 +56,9 @@ class MusicApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<PageProvider>(
           create: (_) => PageProvider(),
+        ),
+        ChangeNotifierProvider<SelectionProvider>(
+          create: (_) => SelectionProvider(),
         ),
         // ChangeNotifierProvider<AuthProvider>(
         //   create: (_) => AuthProvider(),

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/utils/extensions.dart';
 import 'package:musicplayerandroid/utils/fluenticons/fluenticons.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -196,10 +197,11 @@ class AlbumScreen extends StatelessWidget {
                                   onTap: () async {
                                     var songPaths = snapshot.data!.map((e) => e.data).toList();
                                     final AudioProvider audioProvider = AudioProvider();
-                                    if(audioProvider.currentAudioInfo.unshuffledQueue.equals(songPaths) == false){
-                                      audioProvider.updatePlaying(songPaths, index);
+                                    final InfoProvider infoProvider = InfoProvider();
+                                    if(infoProvider.unshuffledQueue.equals(songPaths) == false){
+                                      infoProvider.updatePlaying(songPaths, index);
                                     }
-                                    audioProvider.index = audioProvider.currentQueue.indexOf(snapshot.data![index].data);
+                                    infoProvider.index = infoProvider.currentQueue.indexOf(snapshot.data![index].data);
                                     await audioProvider.play();
                                   },
                                   child: ClipRRect(
