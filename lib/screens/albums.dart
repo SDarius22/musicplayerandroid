@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/components/custom_buttons/add_all_button.dart';
+import 'package:musicplayerandroid/components/text_scroll_with_gradient.dart';
+import 'package:musicplayerandroid/components/tiles/grid_tile.dart' as tiles;
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
+import 'package:musicplayerandroid/providers/selection_provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:provider/provider.dart';
 import '../../utils/fluenticons/fluenticons.dart';
 import 'album_screen.dart';
 
@@ -60,6 +66,7 @@ class _AlbumsState extends State<Albums>{
       appBar: AppBar(
         title: const Text('Albums'),
         actions: [
+          // const AddAllButton(),
           IconButton(
             icon: const Icon(FluentIcons.menu),
             onPressed: () {
@@ -79,7 +86,7 @@ class _AlbumsState extends State<Albums>{
                 margin: EdgeInsets.only(
                   left: width * 0.025,
                   right: width * 0.025,
-                  bottom: height * 0.01,
+                  top: height * 0.01,
                 ),
                 alignment: Alignment.center,
                 child: TextFormField(
@@ -112,142 +119,194 @@ class _AlbumsState extends State<Albums>{
                 ),
               ),
               Expanded(
-                child: FutureBuilder(
-                    future: albumsFuture,
-                    builder: (context, snapshot){
-                      if(snapshot.hasError){
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                FluentIcons.error,
-                                size: height * 0.1,
-                                color: Colors.red,
-                              ),
-                              Text(
-                                "Error loading albums",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: smallSize,
+                child: GestureDetector(
+                  onTap: () {
+                    SelectionProvider selectionProvider = Provider.of<SelectionProvider>(context, listen: false);
+                    if (selectionProvider.selected.isNotEmpty){
+                      selectionProvider.clear();
+                      return;
+                    }
+                  },
+                  child: FutureBuilder(
+                      future: albumsFuture,
+                      builder: (context, snapshot){
+                        if(snapshot.hasError){
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  FluentIcons.error,
+                                  size: height * 0.1,
+                                  color: Colors.red,
                                 ),
-                              ),
-                              ElevatedButton(
-                                onPressed: (){
-                                  setState(() {});
-                                },
-                                child: Text(
-                                  "Retry",
+                                Text(
+                                  "Error loading albums",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: smallSize,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      else if(snapshot.hasData){
-                        if (snapshot.data!.isEmpty){
-                          return Center(
-                            child: Text("No albums found.", style: TextStyle(color: Colors.white, fontSize: smallSize),),
+                                ElevatedButton(
+                                  onPressed: (){
+                                    setState(() {});
+                                  },
+                                  child: Text(
+                                    "Retry",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: smallSize,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           );
                         }
-                        return GridView.builder(
-                          padding: EdgeInsets.only(
-                            left: width * 0.01,
-                            right: width * 0.01,
-                            top: height * 0.01,
-                            bottom: width * 0.125,
-                          ),
-                          itemCount: snapshot.data!.length,
-                          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                            childAspectRatio: 0.825,
-                            maxCrossAxisExtent: width * 0.425,
-                            crossAxisSpacing: width * 0.0125,
-                            //mainAxisSpacing: width * 0.01,
-                          ),
-                          itemBuilder: (BuildContext context, int index) {
-                            AlbumModel album = snapshot.data![index];
-                            return  MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
-                                onTap: () {
-                                  PageProvider().navigatorKey.currentState!.push(
-                                      MaterialPageRoute(
-                                          builder: (context) => AlbumScreen(album: album,)
-                                      )
-                                  );
-                                },
-                                child: Column(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(width * 0.01),
-                                      child: Hero(
-                                        tag: album.album,
-                                        child: FutureBuilder(
-                                          future: localDataProvider.audioQuery.queryArtwork(album.id, ArtworkType.ALBUM),
-                                          builder: (context, snapshot){
-                                            return AspectRatio(
-                                              aspectRatio: 1.0,
-                                              child: snapshot.hasData?
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                    color: Colors.black,
-                                                    image: DecorationImage(
-                                                      fit: BoxFit.cover,
-                                                      image: Image.memory(snapshot.data!).image,
-                                                    )
-                                                ),
-                                              ):
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                    color: Colors.black,
-                                                    image: DecorationImage(
-                                                      fit: BoxFit.cover,
-                                                      image: Image.asset("assets/logo.png").image,
-                                                    )
-                                                ),
-                                              ),
-                                            );
-                                          },
+                        else if(snapshot.hasData){
+                          if (snapshot.data!.isEmpty){
+                            return Center(
+                              child: Text("No albums found.", style: TextStyle(color: Colors.white, fontSize: smallSize),),
+                            );
+                          }
+                          return GridView.builder(
+                            padding: EdgeInsets.all(width * 0.01),
+                            itemCount: snapshot.data!.length,
+                            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: width * 0.425,
+                              crossAxisSpacing: width * 0.02,
+                              mainAxisSpacing: width * 0.02,
+                            ),
+                            itemBuilder: (BuildContext context, int index) {
+                              AlbumModel album = snapshot.data![index];
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(width * 0.025),
+                                child: tiles.GridTile(
+                                  onTap: () async {
+                                    SelectionProvider selectionProvider = Provider.of<SelectionProvider>(context, listen: false);
+                                    if (selectionProvider.selected.isNotEmpty){
+                                      if (selectionProvider.contains(album.id)){
+                                        selectionProvider.remove(album.id);
+                                        return;
+                                      }
+                                      selectionProvider.add(album.id, album.album);
+                                      return;
+                                    }
+                                    PageProvider().navigatorKey.currentState!.push(
+                                        MaterialPageRoute(
+                                            builder: (context) => AlbumScreen(album: album,)
+                                        )
+                                    );
+                                  },
+                                  onLongPress: (){
+                                    print("Long pressed");
+                                    SelectionProvider().add(album.id, album.album);
+                                  },
+                                  id: album.id,
+                                  type: ArtworkType.ALBUM,
+                                  unselectedOverlay: TextScrollWithGradient(
+                                    text: album.album,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: smallSize,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  selectedOverlay: ClipRect(
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                      child: Container(
+                                        color: Colors.black.withOpacity(0.3),
+                                        alignment: Alignment.center,
+                                        child: Icon(
+                                          FluentIcons.check,
+                                          size: height * 0.1,
+                                          color: Colors.white,
                                         ),
                                       ),
                                     ),
-
-                                    SizedBox(
-                                      height: width * 0.005,
-                                    ),
-                                    Text(
-                                      album.album,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        height: 1,
-                                        color: Colors.white,
-                                        fontSize: smallSize,
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                              );
+                              // return  MouseRegion(
+                              //   cursor: SystemMouseCursors.click,
+                              //   child: GestureDetector(
+                              //     onTap: () {
+                              //       PageProvider().navigatorKey.currentState!.push(
+                              //           MaterialPageRoute(
+                              //               builder: (context) => AlbumScreen(album: album,)
+                              //           )
+                              //       );
+                              //     },
+                              //     child: Column(
+                              //       children: [
+                              //         ClipRRect(
+                              //           borderRadius: BorderRadius.circular(width * 0.01),
+                              //           child: Hero(
+                              //             tag: album.album,
+                              //             child: FutureBuilder(
+                              //               future: localDataProvider.audioQuery.queryArtwork(album.id, ArtworkType.ALBUM),
+                              //               builder: (context, snapshot){
+                              //                 return AspectRatio(
+                              //                   aspectRatio: 1.0,
+                              //                   child: snapshot.hasData?
+                              //                   Container(
+                              //                     decoration: BoxDecoration(
+                              //                         color: Colors.black,
+                              //                         image: DecorationImage(
+                              //                           fit: BoxFit.cover,
+                              //                           image: Image.memory(snapshot.data!).image,
+                              //                         )
+                              //                     ),
+                              //                   ):
+                              //                   Container(
+                              //                     decoration: BoxDecoration(
+                              //                         color: Colors.black,
+                              //                         image: DecorationImage(
+                              //                           fit: BoxFit.cover,
+                              //                           image: Image.asset("assets/logo.png").image,
+                              //                         )
+                              //                     ),
+                              //                   ),
+                              //                 );
+                              //               },
+                              //             ),
+                              //           ),
+                              //         ),
+                              //
+                              //         SizedBox(
+                              //           height: width * 0.005,
+                              //         ),
+                              //         Text(
+                              //           album.album,
+                              //           maxLines: 2,
+                              //           overflow: TextOverflow.ellipsis,
+                              //           textAlign: TextAlign.center,
+                              //           style: TextStyle(
+                              //             height: 1,
+                              //             color: Colors.white,
+                              //             fontSize: smallSize,
+                              //             fontWeight: FontWeight.normal,
+                              //           ),
+                              //         ),
+                              //       ],
+                              //     ),
+                              //   ),
+                              //
+                              // );
 
-                            );
-
-                          },
-                        );
+                            },
+                          );
+                        }
+                        else{
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          );
+                        }
                       }
-                      else{
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                          ),
-                        );
-                      }
-                    }
+                  ),
                 ),
               )
             ],

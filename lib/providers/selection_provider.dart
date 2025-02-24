@@ -5,17 +5,15 @@ class SelectionProvider with ChangeNotifier{
   factory SelectionProvider() => _instance;
   SelectionProvider._internal();
 
-  List<String> selected = [];
+  Map<int, String> selected = {};
 
-  int get length => selected.length;
-
-  void remove(String value){
-    selected.remove(value);
+  void remove(int id){
+    selected.remove(id);
     notifyListeners();
   }
 
-  void add(String value){
-    selected.add(value);
+  void add(int id, String path){
+    selected[id] = path;
     notifyListeners();
   }
 
@@ -24,8 +22,8 @@ class SelectionProvider with ChangeNotifier{
     notifyListeners();
   }
 
-  bool contains(String value){
-    return selected.contains(value);
+  bool contains(int value){
+    return selected.containsKey(value);
   }
 
 

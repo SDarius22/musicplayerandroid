@@ -1,22 +1,21 @@
 import 'dart:async';
+
+import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:musicplayerandroid/providers/info_provider.dart';
-import 'package:musicplayerandroid/providers/selection_provider.dart';
-import 'package:musicplayerandroid/screens/home.dart';
-import 'package:musicplayerandroid/providers/notification_provider.dart';
 import 'package:musicplayerandroid/providers/audio_provider.dart';
-import 'package:musicplayerandroid/providers/auth_provider.dart';
 import 'package:musicplayerandroid/providers/database_provider.dart';
+import 'package:musicplayerandroid/providers/info_provider.dart';
 import 'package:musicplayerandroid/providers/local_data_provider.dart';
+import 'package:musicplayerandroid/providers/notification_provider.dart';
 import 'package:musicplayerandroid/providers/page_provider.dart';
+import 'package:musicplayerandroid/providers/selection_provider.dart';
 import 'package:musicplayerandroid/providers/settings_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:bot_toast/bot_toast.dart';
+import 'package:musicplayerandroid/screens/home.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
 import 'database/objectBox.dart';
-
 
 Future<void> main(List<String> args) async {
   await initializeDependencies();
@@ -77,8 +76,6 @@ class MusicApp extends StatelessWidget {
   }
 }
 
-
-
 Future<void> initializeDependencies() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ObjectBox.initialize();
@@ -90,4 +87,3 @@ Future<void> initializeDependencies() async {
 
   await NotificationProvider().init();
 }
-

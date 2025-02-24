@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:musicplayerandroid/components/navigation_observer.dart';
 import 'package:musicplayerandroid/components/song_player_widget.dart';
 import 'package:musicplayerandroid/screens/artists.dart';
 import 'package:musicplayerandroid/screens/create.dart';
@@ -25,6 +26,7 @@ class HomePage extends StatelessWidget {
                 controller: MaterialApp.createMaterialHeroController(),
                 child: Navigator(
                   key: pageProvider.navigatorKey,
+                  observers: [SecondNavigatorObserver()],
                   onGenerateRoute: (settings) {
                     return LoadingScreen.route();
                   },
